@@ -1,0 +1,97 @@
+GATE D1SIZE (live): PASS
+
+== incident (confirmed live before the fix) ==
+- Home / → 500; /api/trending → 500; /api/search?q=pdf → 200 with
+  engine "d1" and vectorError "D1 query result exceeded the maximum
+  response size limit of 50 MB", keyword-only fallback.
+- Root cause: allRecords() (cf/src/db.ts) ran SELECT record_json
+  FROM records WHERE status='listed' — a full-table load. Production
+  D1 at fix time: 22,407 listed records, 53,475,879 bytes of
+  record_json (measured via d1_remote.py), past D1's 50 MB
+  single-query response limit. The catalog keeps growing, so this
+  was not a one-off. (At the auth gate it was 50,865,333 bytes.)
+
+== fix (no full-table scans remain in the Worker request/cron path) ==
+- cf/src/db.ts: allRecords() DELETED outright — a future full-table
+  load fails at compile time. New bounded helpers: recordsByIds
+  (chunked IN, 50/chunk, caller order, unlisted-filtered),
+  listedStats (COUNT + COUNT DISTINCT owner aggregates),
+  recentListedRecords (ORDER BY ingested_at DESC, LIMIT),
+  recordsByKindSample, recordIdsSharingComponents (ids only, quoted
+  LIKE over record_json), recordsByOwner gains an optional LIMIT.
+- cf/src/discovery.ts trendingRecords: velocity ids from
+  trendingRows, records fetched by id only (same ids/order as
+  before); static fallback ranks the same trending() over a 500-record
+  recent pool (STATIC_TRENDING_POOL); failures degrade to an empty
+  rail instead of a 500.
+- cf/src/discovery.ts hybridSearch: byId seeded from the keyword
+  results (already full records); vector neighbours fetched by id
+  only. The post-rank `if (!byId.size) allRecords()` load was dead
+  code (byId is not read after that point) — removed.
+- cf/src/discovery.ts suggestForSkill: bounded candidate pool —
+  vector neighbours (≤12) + same-owner (≤100) + same-kind sample
+  (≤100) + component-name matches (≤100 ids); blend scores unchanged.
+- cf/src/index.ts home: renders only the 8 trending records plus
+  listedStats aggregates (renderHome gains an optional counts
+  override; P1/CLI callers unchanged). Velocity rail identical;
+  fallback rail is trendingRecords' static top-8.
+- cf/src/index.ts /.claude-plugin/marketplace.json: paged build via
+  new createAggregateBuilder (src/aggregate.ts; buildAggregatedMarketplace
+  now delegates to it) — 500 records/page, identical output.
+- cf/src/discovery.ts handleScheduled: cron embed sweep pages the
+  catalog in 250-record chunks with the same shared 100-embed budget
+  (was a full allRecords load).
+- src/render.ts: RenderHomeOptions.counts override for the header line.
+
+== latent bug found during the fix (pre-existing, NOT the incident) ==
+- trendingRows (src/discovery/store.ts) returned snake_case keys
+  (calls_7d, calls_prev_7d, calls_30d) while TrendingRow /
+  computeTrending read camelCase (calls7d, …). computeTrending saw
+  `undefined` for every count, so the velocity path could NEVER fire
+  and production trending was ALWAYS static-fallback. Fixed by
+  mapping in trendingRows (the record_stats refresh path already
+  maps the same columns). Behavior change to the INTENDED behavior:
+  velocity can now fire when ≥3 records clear the 3-call floor.
+  Live /api/trending still reports static-fallback — gateway activity
+  in the last 7 days is genuinely below the floor, which is the
+  honest answer, not a regression.
+
+== own bug caught in verification ==
+- First deploy rendered "8 records from 1074 publishers": the home
+  handler passed listedStats ({count, owners}) as renderHome's
+  counts ({total, owners}). Fixed at the call site, redeployed,
+  re-verified: "22407 records from 1074 publishers".
+
+== tests ==
+Suite 264 tests, 263 pass, 0 fail, 1 pre-existing env-gated skip
+(was 255). New test/d1size.test.ts (9 tests): SQLite-backed D1Like
+with a 2 MB response cap over a 1,500-record synthetic catalog
+(~3 MB — a full scan throws, modeling the incident); trending
+velocity exactness + fallback ranking over the pool; hybridSearch
+vectorUsed with and without the vector layer; suggest blending;
+home data path; paged aggregate == whole-catalog build;
+recordsByIds order + unlisted filtering.
+
+== deploy ==
+Worker 45dd2c6b-b9d1-4273-9ae7-ad75527b672d (first), then
+1573fe0c-412f-40f5-b8cf-609f5f1e8b11 (counts fix) via
+cf/scripts/deploy_d1size.py. No migrations, no secrets set.
+
+== live evidence (Worker 1573fe0c) ==
+PASS home 200 — "22407 records from 1074 publishers", Trending rail renders
+PASS /api/trending 200 — mode static-fallback, floor 3, count 8
+PASS /api/search?q=pdf — engine "d1+vectorize", no vectorError, count 20
+PASS /api/suggest?skill=anthropics/pdf — 6 picks (anthropics/document-skills, anthropics/docx, jim60105/pdf, …)
+PASS /skills/anthropics/pdf 200; /search?q=pdf 200
+PASS /.claude-plugin/marketplace.json 200 — 17,919 plugins
+  (fewer than 22,407 listed: duplicate plugin names are skipped by
+  design, pre-existing behavior, unchanged)
+
+== watch items (not fixed here) ==
+- Owner profile pages still load recordsByOwner unbounded (one owner
+  at a time). Largest owners are a few hundred records today; if one
+  ever approaches ~20k records it hits the same 50 MB wall — the
+  limit param now exists, the route just doesn't use it yet.
+- The queue drain + sandbox drain were untouched, as instructed.
+
+GATE D1SIZE: PASS (live, all checks)

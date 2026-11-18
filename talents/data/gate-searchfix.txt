@@ -1,0 +1,61 @@
+SEARCH-FIX GATE — "build games" defect (2026-11-10)
+Evidence detail: data/gate-searchfix.json
+
+ROOT CAUSES (verified live before the fix)
+  q=games → 0 results · q=game → 5 loose matches · q="build games" top 3 =
+  anthropics/mcp-builder, anthropics/web-artifacts-builder,
+  anthropics/frontend-design (all matched only the generic token "build").
+  (1) catalog had zero game-dev skills (2) trigram plural/singular miss
+  (3) single OR-MATCH + bm25 let the common token flood the ranking.
+
+PART A — SEARCH FIX (src/search-d1.ts, deployed)
+  PASS  token normalization: games→game etc. (≥4 chars, not "ss"-final),
+        applied at query time (D1) and to indexed tokens (local engine)
+  PASS  per-token ranking: distinct tokens matched → Σ 1/(1+df) rarity →
+        name relevance → whole-word relevance → description aboutness →
+        best bm25 rank (name/description-weighted) → attested → warnings
+  PASS  partial-match honesty: /api/search returns partial/missingTokens/
+        note; /search page renders "Partial match. No skills match
+        'zzzquest' yet — showing closest matches for the rest of your
+        search" (verified live, API + HTML)
+  PASS  typo broadening intact: pdff → anthropics/pdf, partial=false
+
+PART B — CATALOG GROWTH (data/registry.json; no rate-limit incidents)
+  anthropics/claude-plugins-official FULL   317 seen / 310 ok / 7 dead
+  garrytan/gstack repo scan FULL             71 seen /  70 ok / 1 dead
+  Donchitos/Claude-Code-Game-Studios NEW     78 seen /  78 ok / 0 dead
+  gamedev-skills/awesome-gamedev NEW         78 seen /  78 ok / 0 dead
+  brockmartin/roblox-game-skill NEW           1 seen /   1 ok / 0 dead
+  Game sources tree-verified before ingest (78/78/1 SKILL.md files).
+  Catalog 49 → 557 records (157 from the game sources). Aggregate
+  rebuilt: 555 entries, 2 reported duplicate-name skips, 0 origin
+  violations, validator clean. Remote D1 re-seeded; Worker deployed
+  (ffd9d07c), then a code-only follow-up (ae17f3fb) for the bm25
+  candidate-order weights — remote D1 deliberately NOT re-seeded the
+  second time so discovery-ingested records were not wiped.
+  NOTE: the P5 discovery pipeline is autonomously sweeping — live
+  aggregate entries were 555 at seed, 588 and 605 at later checks.
+
+LIVE GATE (https://talents.sh)
+  PASS  pdf → anthropics/pdf first
+  PASS  document → anthropics/document-skills first
+  PASS  pdff → anthropics/pdf first
+  PASS  pdf + kind=skill → all results kind=skill, pdf first
+  PASS  "build games" top 5 — ALL game-dev skills:
+        gamedev-skills/ebitengine-game · game-jam · game-ui-ux ·
+        card-game · defold-core   (PASS condition 1: game records on top)
+  PASS  "games" ≡ "game" — identical 171-record sets (limit 500)
+  DIVERGENCE  security → 42crunch first at the seeded deploy; at final
+        verification code-yeongyu/security-research (ingested by the
+        autonomous discovery sweep in between) ranks first and 42crunch
+        second. It ties 42crunch on every engineered ranking key and
+        edges it on name+description bm25 (measured in remote D1:
+        -5.81 vs -5.67). The pre-fix engine ranks it first too — this
+        is catalog growth, not a regression of the fix, and no boost
+        was faked to force the old snapshot. See gate-searchfix.json.
+
+TESTS
+  Root suite: 73 total — 72 pass, 1 skip (env-gated Typesense), 0 fail.
+  New: test/searchfix.test.ts ×8. P0 gate unchanged (5/5, 24/1).
+  One transient discovery.test.ts failure observed in a single
+  parallel run; green in isolation and in both subsequent full runs.

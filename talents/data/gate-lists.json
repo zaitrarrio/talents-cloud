@@ -1,0 +1,331 @@
+{
+  "at": "2026-11-11T10:50:56.289Z",
+  "before": {
+    "sourcesByStatus": {
+      "candidate": 20687,
+      "ingested": 627,
+      "rejected": 57,
+      "stale": 273,
+      "verified": 26,
+      "watchlist": 36
+    },
+    "listed": 11705
+  },
+  "after": {
+    "sourcesByStatus": {
+      "candidate": 20762,
+      "ingested": 627,
+      "mined": 5,
+      "rejected": 52,
+      "stale": 273,
+      "verified": 26,
+      "watchlist": 36
+    },
+    "listed": 11705
+  },
+  "seed": [
+    {
+      "locator": "appwrite/sdk-generator",
+      "via": "github-code-search",
+      "isList": false,
+      "reason": "not a list: 7 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "archestack/best-of-vibe-coding",
+      "via": "topic:claude-code-skills",
+      "isList": true,
+      "reason": "list source — classified 2026-11-11T10:51:45.187Z: no skill files in tree, 25 outbound repo links",
+      "mine": {
+        "list": "archestack/best-of-vibe-coding",
+        "docsFetched": 1,
+        "linksFound": 25,
+        "uniqueLocators": 25,
+        "repoLocators": 25,
+        "nominated": 25,
+        "created": 19,
+        "corroborated": 6,
+        "alreadyKnown": 0,
+        "capped": false,
+        "barPassed": true
+      }
+    },
+    {
+      "locator": "cloudflare/sandbox-sdk",
+      "via": "skills.sh",
+      "isList": false,
+      "reason": "not a list: 1 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "dr-titus100/titus-web",
+      "via": "topic:claude-skills",
+      "isList": false,
+      "reason": "not a list: 0 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "j-nowcow/awesome-korean-agent-skills",
+      "via": "topic:claude-code-skills",
+      "isList": false,
+      "reason": "not a list: 7 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "mapbox/mcp-devkit-server",
+      "via": "skills.sh",
+      "isList": false,
+      "reason": "not a list: 6 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "michengai/dsh-skills-manager",
+      "via": "npm",
+      "isList": true,
+      "reason": "list source — classified 2026-11-11T10:53:38.412Z: no skill files in tree, 12 outbound repo links",
+      "mine": {
+        "list": "michengai/dsh-skills-manager",
+        "docsFetched": 11,
+        "linksFound": 13,
+        "uniqueLocators": 13,
+        "repoLocators": 12,
+        "nominated": 13,
+        "created": 13,
+        "corroborated": 0,
+        "alreadyKnown": 0,
+        "capped": false,
+        "barPassed": true
+      }
+    },
+    {
+      "locator": "serdnaley/metabase-mcp",
+      "via": "npm",
+      "isList": true,
+      "reason": "list source — classified 2026-11-11T10:54:01.518Z: no skill files in tree, 18 outbound repo links",
+      "mine": {
+        "list": "serdnaley/metabase-mcp",
+        "docsFetched": 16,
+        "linksFound": 19,
+        "uniqueLocators": 19,
+        "repoLocators": 18,
+        "nominated": 19,
+        "created": 18,
+        "corroborated": 1,
+        "alreadyKnown": 0,
+        "capped": false,
+        "barPassed": true
+      }
+    },
+    {
+      "locator": "travisvn/awesome-claude-skills",
+      "via": "web-search",
+      "isList": true,
+      "reason": "list source — classified 2026-11-11T10:54:21.593Z: no skill files in tree, 20 outbound repo links",
+      "mine": {
+        "list": "travisvn/awesome-claude-skills",
+        "docsFetched": 2,
+        "linksFound": 20,
+        "uniqueLocators": 20,
+        "repoLocators": 20,
+        "nominated": 20,
+        "created": 8,
+        "corroborated": 12,
+        "alreadyKnown": 0,
+        "capped": false,
+        "barPassed": true
+      }
+    },
+    {
+      "locator": "ui5/mcp-server",
+      "via": "npm",
+      "isList": true,
+      "reason": "list source — classified 2026-11-11T10:55:06.812Z: no skill files in tree, 15 outbound repo links",
+      "mine": {
+        "list": "ui5/mcp-server",
+        "docsFetched": 6,
+        "linksFound": 17,
+        "uniqueLocators": 17,
+        "repoLocators": 15,
+        "nominated": 17,
+        "created": 17,
+        "corroborated": 0,
+        "alreadyKnown": 0,
+        "capped": false,
+        "barPassed": true
+      }
+    },
+    {
+      "locator": "vercel-labs/next-skills",
+      "via": "skills.sh",
+      "isList": false,
+      "reason": "not a list: 1 outbound repo links < 10, no skill files",
+      "mine": null
+    },
+    {
+      "locator": "yawlabs/ctxlint",
+      "via": "npm",
+      "isList": false,
+      "reason": "not a list: 3 outbound repo links < 10, no skill files",
+      "mine": null
+    }
+  ],
+  "handChecks": [
+    {
+      "locator": "anthropics/skills",
+      "status": "ingested",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Document Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Document Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Document Skills"
+    },
+    {
+      "locator": "anthropics/claude-cookbooks",
+      "status": "ingested",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Repositories & Examples",
+      "note": "mined from list travisvn/awesome-claude-skills § Repositories & Examples (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Repositories & Examples"
+    },
+    {
+      "locator": "trailofbits/skills",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "lackeyjb/playwright-skill",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "conorluddy/ios-simulator-skill",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "zarazhangrui/frontend-slides",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "chrisvoncsefalvay/claude-d3js-skill",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "alonw0/web-asset-generator",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Individual Skills",
+      "note": "mined from list travisvn/awesome-claude-skills § Individual Skills (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Individual Skills"
+    },
+    {
+      "locator": "obra/superpowers-skills",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Collections & Libraries",
+      "note": "mined from list travisvn/awesome-claude-skills § Collections & Libraries (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Collections & Libraries"
+    },
+    {
+      "locator": "obra/superpowers-lab",
+      "status": "candidate",
+      "list": "travisvn/awesome-claude-skills",
+      "section": "Collections & Libraries",
+      "note": "mined from list travisvn/awesome-claude-skills § Collections & Libraries (README.md)",
+      "repoExists": true,
+      "sectionMatches": true,
+      "foundHeading": "Collections & Libraries"
+    }
+  ],
+  "proofs": {
+    "recordsFromListRepos": 0,
+    "listRows": [
+      {
+        "locator": "archestack/best-of-vibe-coding",
+        "status": "mined",
+        "recordCount": 0
+      },
+      {
+        "locator": "michengai/dsh-skills-manager",
+        "status": "mined",
+        "recordCount": 0
+      },
+      {
+        "locator": "serdnaley/metabase-mcp",
+        "status": "mined",
+        "recordCount": 0
+      },
+      {
+        "locator": "travisvn/awesome-claude-skills",
+        "status": "mined",
+        "recordCount": 0
+      },
+      {
+        "locator": "ui5/mcp-server",
+        "status": "mined",
+        "recordCount": 0
+      }
+    ],
+    "listReposInLiveAggregate": [],
+    "corroboratedCandidate": {
+      "locator": "chromedevtools/chrome-devtools-mcp",
+      "channels": [
+        "npm",
+        "skills.sh",
+        "list"
+      ],
+      "list": "archestack/best-of-vibe-coding",
+      "section": "🔌 MCP servers for developers"
+    },
+    "drain": {
+      "batches": 23,
+      "newRecords": 7976,
+      "progressFileAgeSec": 7801
+    }
+  },
+  "totals": {
+    "seedExamined": 12,
+    "listsClassified": 5,
+    "staysRejected": 7,
+    "nominated": 94,
+    "newCandidates": 75,
+    "corroborated": 19,
+    "alreadyKnown": 0
+  },
+  "backlogBefore": 20713,
+  "backlogAfter": 20788
+}

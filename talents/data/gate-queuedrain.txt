@@ -1,0 +1,294 @@
+GATE QUEUEDRAIN — queue-based backfill drain — 2026-11-11
+======================================================================
+Status: BUILT + DEPLOYED; CUTOVER SLICE BLOCKED ON GITHUB_TOKEN
+SECRET (details below). Everything else on the brief is done and
+verified live. The sandbox drain and its watchdog were NOT stopped
+or modified; QUEUE_DRAIN_ENABLED was NOT set; nothing was enqueued
+beyond test fixtures (zero production candidates were enqueued by
+this gate — the two live calls to the new admin route were auth
+probes that 401'd before the handler ran).
+
+WHY
+-----------------------------------------------
+The backfill backlog (~20.6k sources.status='candidate' rows) was
+worked by a sandbox operator script (scripts/backfill-drain.mjs
+over `wrangler d1 execute`) that sandbox VM restarts and proxy
+hiccups kept killing (it died again during this very build — see
+DRAIN STATE). The talents-ingest Queue already existed, but only
+carried VERIFIED sources: the daily cron verifies ≤16 inline and
+enqueues those; the consumer ingested blindly. This build teaches
+the queue to drain the backlog itself.
+
+DESIGN DECISIONS
+-----------------------------------------------
+1. One pipeline, two transports — no forked logic. The consumer's
+   candidate mode calls the same primitives the drain script does:
+   verifyRepo (src/discovery/sweep.ts), classifyAsList
+   (src/discovery/lists.ts), ingestSource (src/discovery/
+   pipeline.ts). All D1 writes go through the shared
+   D1DiscoveryStore (chunked, src/d1-limits.ts caps) — the Worker
+   path writes via the native binding, never wrangler.
+
+2. Failure CLASS decides the message outcome (the upgrade the
+   queue buys over the drain, which rejected on ANY verify
+   failure — including rate-limit windows):
+   - deterministic → mark source rejected with reason in D1, ack:
+     * verify: archived / empty tree / no skill files (after the
+       list heuristic has had its chance) / tree fetch 404;
+     * ingest: statement-size errors (statement too long /
+       SQLITE_TOOBIG matcher, parity with the drain's
+       isOversizedStatementError) — with the chunked store these
+       should never occur Worker-side; the class exists so one
+       would dead-letter in D1 instead of retry-looping.
+   - transient → throw → Queues retries (max_retries 3) → DLQ:
+     * verify fetch failures with status 401 (OUR credential is
+       bad — an operator problem, never the candidate's fault),
+       403/429 (rate limit past the Pacer's in-message backoff),
+       5xx, or network throw;
+     * any non-deterministic ingest exception;
+     * classifyAsList throwing (the drain rejects as a fallback;
+       the queue deliberately deviates — retries + DLQ keep the
+       candidate recoverable instead of dead-lettering it on what
+       may be a network failure).
+   The source row stays status='candidate' through every retry
+   and into the DLQ, so DLQ'd candidates are recoverable by
+   re-enqueueing. verifyRepo now returns failure:
+   "deterministic" | "transient" (new additive field; the CLI
+   cycle / scout runner / sandbox drain ignore it and keep their
+   historical behavior).
+
+3. Drain parity inside candidate mode:
+   - locator collapse: getSourceByLocator up front — an ingested
+     twin retires this row as stale; a verified twin is ADOPTED
+     as the ingest target so the locator progresses in this
+     message; after any terminal outcome the remaining
+     candidate/verified twin rows for the locator retire (stale
+     on ingest/list paths, rejected on reject paths), and a
+     verification-corrected kind retires the provisional row.
+   - list claims (kind='list' candidates) classify first:
+     mine → mined, graduate → verified row under the real kind
+     and on to ingest, neither → rejected with the reason.
+   - non-repo candidates (mcp-server / npm-package /
+     skill-package) ingest directly — they verify inside ingest
+     by refetch, exactly as the drain treats them.
+   - NO per-message refreshStats in candidate mode (the verified
+     path keeps it): refreshStats recomputes over the whole
+     catalog — right for the daily trickle, wrong at drain
+     rates. Drained records' stats ride the existing daily cron,
+     as scout ingests' already do.
+
+4. Back-compat is structural, not promised: messages for verified
+   sources take the original code path untouched (ingest +
+   refreshStats); webhook unknown-locator messages still record
+   a candidate and return; rejected/watchlist/stale rows no-op;
+   non-candidate list rows still re-mine via refreshListSource.
+   Candidate list rows are the one deliberate reroute (classify
+   instead of refresh) — that IS the drain behavior.
+
+5. Producer, one paging implementation (store.listCandidatePage,
+   keyset over (priority DESC, locator ASC, kind ASC) — the
+   store's verification-priority order over the existing
+   (status, priority) index):
+   - POST /admin/enqueue-candidates (ADMIN_TOKEN-gated like the
+     other /admin routes; {limit ≤ 500, cursor} → {enqueued,
+     items[{kind, locator, priority}], nextCursor, done}) —
+     returns the exact source ids so a slice is attributable.
+   - Scheduled step in the daily cron: ONE page of 100 per run,
+     only when QUEUE_DRAIN_ENABLED is "1"/"true". The env var is
+     declared in cf/src/db.ts and deliberately ABSENT from both
+     wrangler configs (verified unbound post-deploy).
+
+6. DLQ: queue talents-ingest-dlq created; consumer now
+   max_batch_size 1, max_retries 3, max_concurrency 5,
+   dead_letter_queue talents-ingest-dlq (verified via the
+   Cloudflare API post-deploy). Nothing consumes the DLQ, by
+   design — it is a parking lot with an alarm's job, and its
+   contents map 1:1 to sources rows still at status='candidate'.
+
+7. GITHUB_TOKEN: ONE fetch wrapper (githubAuthedFetch in
+   cf/src/discovery.ts) is now deps.fetchFn for every Worker
+   discovery path — sweep verification, ingest, list
+   classification, scout funnel. It attaches `Bearer <token>`
+   ONLY to https://api.github.com/ requests that don't already
+   carry an authorization header; raw.githubusercontent.com /
+   npm / MCP-registry traffic never sees it. The code-search
+   cron scout already read env.GITHUB_TOKEN into its context.
+   Inert until the secret exists. (Also fixed en route: a latent
+   bad import — cf/src/discovery.ts and cf/src/index.ts imported
+   SearchQueryInput from search-d1.js, which doesn't re-export
+   it; it lives in src/search.ts. Exposed because this gate's
+   tests pull cf/src/discovery.ts into the root type-checked
+   build for the first time.)
+
+RATE MATH (the numbers behind max_concurrency 5)
+-----------------------------------------------
+- api.github.com calls per candidate: 3 typical (verify tree,
+  repo metadata for default branch, ingest scan tree); ≤8
+  worst case assumed (marketplace graphs, list classification's
+  extra tree + branch calls).
+- Authenticated core budget: 5,000 calls/hr → 625 candidates/hr
+  ceiling at the worst-case 8 calls; ~1,600/hr at the typical 3.
+- Target: ≤ ~400 candidates/hr sustained (≈3,200 calls/hr at
+  worst case — 64% of budget, leaving headroom for the daily
+  scouts, enrichment, and webhook re-ingests on the same token).
+- Consumer throughput ≈ max_concurrency × 3600 / mean-latency.
+  At 5 concurrent and a ~45s mean candidate latency (sequential
+  GitHub fetch chains + D1 writes, mostly I/O wait; the sandbox
+  drain's observed 12–31s/candidate is single-threaded WITH a
+  1s pacer, so 45s is conservative): ≈400/hr — the concurrency
+  cap itself enforces the target; at a 30s mean it tops out at
+  600/hr, still under the worst-case token ceiling.
+- In-message protection: the Pacer still backs off 5s/10s/20s on
+  403/429 inside one verify before the failure class is even
+  consulted. Queue-level retry_delay is 0 (platform setting) —
+  acceptable because per-message calls are few and the DLQ caps
+  the blast radius at 4 attempts per candidate.
+- Producer page 100/day (flag on) is a trickle by design; the
+  backlog-rate feed is the admin route (500/call).
+
+TESTS
+-----------------------------------------------
+Suite: 249 tests, 248 pass + 1 pre-existing env-gated skip,
+0 fail (was 232 / 231 + 1). New: test/queuedrain.test.ts (17
+tests) running the REAL consumer + producer against the REAL
+D1DiscoveryStore over node:sqlite built from the production
+migrations, network faked at global fetch:
+- candidate happy path (verify → ingest, record stored);
+- kind corrected at verification (skill claim, marketplace tree):
+  provisional row retires stale, canonical row ingests;
+- not-a-skill → rejected, resolves (ack), reason recorded;
+- repo gone (404) → rejected deterministically;
+- 403 verify → throws, row stays candidate;
+- network throw on verify → throws, row stays candidate;
+- deterministic ingest failure (injected SQLITE_TOOBIG on the
+  records insert) → rejected with reason, resolves;
+- list heuristic: no-skill-files candidate with 12 outbound repo
+  links → classified + mined, original row becomes (list,
+  mined), ≥12 candidates nominated, no record produced;
+- twin retirement on canonical ingest;
+- GITHUB_TOKEN present on every api.github.com call, absent on
+  raw.githubusercontent.com calls;
+- verified message: legacy path, zero verify calls (no
+  trees/HEAD fetch), ingests + refreshStats;
+- unknown locator: candidate recorded, zero fetches (webhook
+  behavior unchanged);
+- rejected row message: no-op, zero fetches;
+- producer paging over InMemory store: exact priority order
+  incl. (priority, locator, kind) tie-breaks, terminal rows
+  excluded, all pages, no duplicates;
+- admin handler: missing queue binding → error; garbage cursor
+  → error; happy paging across 3 calls (full page yields cursor,
+  done on the empty page — the /admin/embed contract);
+- scheduled step: flag off → null, zero sends; flag predicates
+  ("1"/"true" only); flag on → page enqueued via backfill-cron;
+- deploy config: max_concurrency 5 + DLQ + max_retries 3 wired
+  in wrangler.deploy.jsonc (text assertions).
+
+DEPLOY + LIVE VERIFICATION
+-----------------------------------------------
+- DLQ created: `wrangler queues create talents-ingest-dlq` (exit 0).
+- Deployed via cf/scripts/deploy_queuedrain.py (established
+  surrogate-env pattern; build + `wrangler deploy -c
+  wrangler.deploy.jsonc`): Worker version
+  aca4e6b7-7b8f-4616-9d3b-c11abdf4f464. No migrations, no seed.
+- Consumer settings read back from the Cloudflare API:
+  { script: talents, dead_letter_queue: talents-ingest-dlq,
+    batch_size: 1, max_retries: 3, max_concurrency: 5 }.
+- Worker bindings read back: QUEUE_DRAIN_ENABLED NOT bound
+  (flag off); secrets present: ADMIN_TOKEN, ANTHROPIC_API_KEY,
+  TALENTS_REGISTRY_KEY — GITHUB_TOKEN absent (see below).
+- Smoke: GET talents.sh 200; /api/search?q=pdf →
+  engine "d1+vectorize"; MCP initialize handshake at
+  mcp.talents.sh → talents-gateway 0.2.0; POST
+  /admin/enqueue-candidates without token → 401, with a wrong
+  token → 401, GET → 405 (route live and gated; both probes
+  failed auth BEFORE the handler, so nothing was enqueued).
+- Production D1 read back post-deploy (backfill-counts):
+  records listed 16,096 (unchanged by the deploy);
+  sources: candidate 20,641 · ingested 738 · verified 21 ·
+  rejected 63 · stale 304 · mined 5 · watchlist 36;
+  embedding_meta 16,146, listed-unembedded 0.
+
+BLOCKED: THE 500-CANDIDATE SLICE (GITHUB_TOKEN)
+-----------------------------------------------
+The brief's slice was not run, and the secret was not set,
+because the credential is not retrievable from this sandbox:
+dynamic_credential_entry("custom.talents-github") → authd HTTP
+403: "this connector's credentials are not available to the
+sandbox; use the connector's privsep tool, or a custom.*
+connector whose policy allows sandbox use." (Same for the bare
+name "talents-github".) The helper only ever returns surrogates,
+and this connector's policy denies sandbox surrogate access —
+so there is no sanctioned path from here to the real token
+value, and a surrogate string must never be stored as a Worker
+secret (it would not resolve outside sandbox-originated
+requests, and a bad Bearer token turns every GitHub call into a
+401 — which candidate mode correctly classifies transient, so
+the backlog would retry/DLQ instead of draining).
+
+To unblock (user/main-session action): provide the token via
+the connector's privsep/secure-entry path, then set it with
+`wrangler secret put GITHUB_TOKEN` (value via stdin only).
+The moment the secret exists, the code path is live with NO
+further deploy: the fetch wrapper attaches it, and the
+code-search cron scout stops self-reporting blocked.
+
+Running the slice then (operator, from any shell with the admin
+token): POST /admin/enqueue-candidates {limit: 500} — keep the
+returned items[] (source ids); poll those rows in D1 until all
+leave status='candidate' (ingested / rejected / stale / mined
+are the terminal outcomes; rows still candidate after the queue
+empties + retry window are the DLQ set — cross-check against
+the DLQ in the dashboard); measure wall-clock from the POST to
+the last terminal transition. Attribution is exact by
+construction: outcomes are counted ONLY over the 500 returned
+source ids, and record deltas come from those rows'
+record_count changes — the sandbox drain (if running) works
+the same table but cannot touch the accounting for ids it
+didn't process; where both raced one locator, ingest
+idempotency means the second processor observes
+existingSkipped, and its row still terminates via the
+locator-collapse rules.
+
+SANDBOX DRAIN — STATE + COMPARISON (untouched by this build)
+-----------------------------------------------
+Progress file at gate time: started 2026-11-11T03:30:31Z,
+27 batches, 568 sources ingested, 10,825 new records, 371
+existing skipped, 2,127 dead letters, 38 rejected, 290 twins
+retired, 69 ingest errors (all 69 are the pre-fix wrangler
+flush failures). BUT: no drain process was alive at any point
+during this build (checked repeatedly) and the counters have
+not moved since the 09:08 CST watchdog relaunch — it died
+again (the log tail shows the usual wrangler fetch-failure
+signature) and the hourly watchdog remains its only lifeline.
+Effective alive-rate while it runs: batches of 25 per ~5–13
+min ⇒ ~115–300 sources/hr, single-threaded, plus total loss of
+progress visibility between watchdog runs. The queue drain's
+projected ~400/hr with platform-managed retries and no process
+to babysit is the entire point of the cutover; the 500-slice
+is the remaining proof.
+
+CUTOVER RECOMMENDATION
+-----------------------------------------------
+1. Set GITHUB_TOKEN (above). No deploy needed.
+2. Run the 500-candidate slice via the admin route; accept if:
+   outcomes-by-id show sane rejection reasons, DLQ arrivals
+   are ~0 (any cluster = investigate before proceeding), and
+   sustained throughput ≥ ~300/hr.
+3. On accept: stop the sandbox drain + remove the watchdog
+   cron (main-session actions — deliberately NOT done here).
+4. Feeding the remaining ~20k: the flag-gated cron step alone
+   (100/day) is a steady-state trickle, NOT a backlog pace.
+   Either loop the admin route (500/call, operator- or
+   script-driven — at ~400/hr the queue consumes a 500 page in
+   ~75 min, so a call every ~hour drains ~9,600/day), or add a
+   dedicated producer cron (e.g. every 15 min) with its own
+   scheduled() dispatch branch that runs ONLY the producer
+   step at page 500. Recommend the dedicated cron as a small
+   follow-up change; do NOT simply raise the daily page —
+   handleScheduled also runs the full daily discovery cycle,
+   so a more frequent trigger would multiply scout load too.
+5. After the backlog empties: producer pages return done with
+   0 enqueued; the flag can stay on harmlessly as the
+   steady-state feeder for scout-nominated candidates that
+   outpace the cron's inline verify cap.

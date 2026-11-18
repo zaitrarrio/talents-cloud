@@ -1,0 +1,111 @@
+GATE — P0-1 stats fix (scalability audit): refreshRecordStats replaced
+with incremental stats maintenance + paged rebuild job
+Date: 2026-11-12 ~02:08–02:30 UTC. Worker: 69c9bce5-af23-4e7d-a529-b03236054333
+(deployed 2026-11-12 ~02:08 UTC via cf/scripts/deploy_statsfix.py; build +
+wrangler deploy; schedules confirmed post-deploy: daily discovery
+23 4 * * *, drain producer */10 * * * *, weekly enrichment 41 5 * * 1).
+Sequencing: queue slice COMPLETE before deploy (500/500 terminal
+2026-11-12 01:33:54Z, 182 ingested / 305 stale / 13 rejected), so the
+deploy-while-slice-runs hold did not apply.
+
+PROBLEM (audit-measured, 2026-11-12 ~01:40–02:00 UTC)
+- record_stats covered 12,582 of 22,407 listed records (56% — 44% stale).
+- refreshRecordStats (src/discovery/store.ts:693) ran a full-table
+  SELECT record_json (53.5 MB > D1's 50 MB single-query result limit)
+  and then 22,407 sequential INSERTs (> the 1,000 queries/invocation
+  cap). It ran after every verified queue ingest (cf/src/discovery.ts)
+  and at the end of every cron cycle, so a verified message ingested
+  successfully and then threw → retries x3 → DLQ.
+
+FIX SHAPE (per data/scalability-durability-plan.md P0-1)
+- refreshRecordStats DELETED, with all callers: pipeline.ts cycle end,
+  scouts/runner.ts funnel end, cf/src/discovery.ts verified path,
+  scripts/backfill-drain.mjs per-5-batch + final.
+- upsertStatsForRecords(db, records, now) in src/discovery/store.ts:
+  per-record gateway/install counts via IN-chunks of 50 ids; owner
+  aggregates exact via SQL GROUP BY (count + attested share) and
+  record_json loads packed to ~200 records for warning rate; multi-row
+  INSERT ... ON CONFLICT upserts chunked at 8 rows/statement
+  (88 bound params <= 100). external_installs / external_source
+  deliberately excluded so setExternalInstalls is never clobbered.
+- rebuildStatsPage(db, limit, cursor, now): keyset on id, 500/page,
+  stats recomputed exactly via upsertStatsForRecords.
+- POST /admin/stats-rebuild {limit, cursor} (ADMIN_TOKEN-gated, wired
+  in cf/src/index.ts admin dispatch); one rebuild page per daily cron
+  run in handleScheduled (best-effort).
+- ingestSource (src/discovery/pipeline.ts) maintains stats inline for
+  exactly the records it writes (fresh + updated, returned as a new
+  `records` field), inside a try/catch that warns instead of failing
+  the ingest — a stats failure degrades, never dead-letters.
+- DiscoveryStore interface gained upsertStatsForRecords +
+  rebuildStatsPage (D1 + InMemory implementations). All D1 writes
+  through the shared chunked store (src/d1-limits.ts caps).
+
+TESTS
+- Suite: 299 total, 298 pass, 0 fail, 1 pre-existing env-gated skip
+  (was 255). New test/statsfix.test.ts (5 tests) runs the real D1 store
+  over SQLite behind a strict D1Like enforcing the production caps
+  (50 MB response, 900 statements/invocation): a full-table SELECT
+  trips the cap on a literal 60k-record synthetic store (~60 MB
+  record_json) while incremental stats for a 100-record single-owner
+  batch take <100 statements; exact-stats correctness incl. owner
+  aggregates + external_installs preservation both directions; rebuild
+  convergence (1,200 records, 3 pages of 500, per-page <900
+  statements); admin route paging contract; verified-queue message
+  for a 100-skill collection completes with no error, source ingested,
+  100/100 stats rows present, whole message <900 statements. (The
+  plan's "<100 statements" bar was read as the stats portion — the
+  ingest itself is ~3 statements/record by construction; stated in
+  the test + gate.)
+
+LIVE VERIFICATION
+- Smoke (post-deploy, twice): home 200, trending 200, search
+  d1+vectorize (q=pdf, count 20), /admin/stats-rebuild 401 without
+  auth, /api/suggest?skill=anthropics/pdf 200. (?q=pdf on suggest
+  400s — that endpoint takes skill=/goal=, not q=; not a defect.)
+- Rebuild backfill (operator driver scripts/stats-rebuild-run.mjs,
+  new durable driver mirroring backfill-embed.mjs: token from
+  /tmp/talents-admin-token, paged cursor threading, retry with
+  backoff + page-size halving, convergence on statsRows >= listed):
+  - Run 1 interrupted by a sandbox VM restart ~02:14 UTC after ~4
+    pages (stdout was piped through tail, so its log was lost;
+    D1 showed +2,204 rows: 12,582 -> 14,786). Token file wiped with
+    /tmp; re-minted via cf/scripts/set_discovery_secrets.py.
+  - Run 2: 45 pages, 22,443 records processed, 0 retries, 1 sweep,
+    6m26s. statsRows 14,786 -> 22,494; listed 22,443 -> 22,444
+    (the +1 is the gavdalf ingest below, which carried its own
+    stats row). Final page: processed=443, done=true.
+  - Flat statsRows through pages 1-11 is explained, not a bug:
+    pre-existing coverage covered the id-prefix up to ~ferroxlabs
+    (first listed id without a stats row was
+    ferroxlabs/research-orchestrator); the climb started at page 12
+    (+257) once the sweep reached the gap region. Page 13 took
+    ~4 min (transient Worker/D1 slowness, no retries needed).
+  - Final D1 (2026-11-12 ~02:26 UTC): listed 22,444, statsRows
+    22,494, listedWithoutStats 0, dlqEntries 0, candidates 20,131.
+    The 50 statsRows over listed are orphans for unlisted records
+    (join check: 14,736 of 14,786 stats rows joined to listed
+    records at the pre-rebuild check).
+- Verified-path live test (the P0 proof): webhook push for
+  gavdalf/total-recall — verified source, 0 records, root SKILL.md
+  confirmed at the GitHub API — POST /webhooks/github returned
+  {"reindex":true,"reason":"SKILL.md changed: SKILL.md",
+  "queued":true,"signatureChecked":false} (dev mode: WEBHOOK_SECRET
+  still unset). Consumer ingested at 2026-11-12T02:18:17Z: source
+  verified -> ingested, record_count 1, record gavdalf/total-recall
+  listed, its record_stats row present, dlq_entries 0, skill page
+  200. Before this fix the identical path threw after ingest and
+  the message landed in the DLQ.
+
+NOT DONE / STILL OPEN (unchanged by this task)
+- QUEUE_DRAIN_ENABLED still off; sandbox drain + hourly watchdog
+  still running. Cutover conditions per the audit plan (P0-1 landed
+  [this gate], P1-1 landed, hardening producer running 24 h with
+  DLQ depth 0) are NOT yet all met — cutover is a separate decision.
+- WEBHOOK_SECRET still unset (webhook route remains accept-and-log
+  dev mode; the synthetic push above is the operator trigger).
+- Admin token re-minted twice during gating (VM restart wiped /tmp);
+  /tmp/talents-admin-token deleted after gating per the pattern.
+- Audit P0-2 (aggregate -> R2), P0-3 (nightly D1 export + drill),
+  P0-4 (DLQ visibility), P0-5 (health + alerts), P1-1..P1-8, P2
+  items remain unbuilt.

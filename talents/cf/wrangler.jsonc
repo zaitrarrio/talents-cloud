@@ -1,0 +1,50 @@
+{
+  // Talents — full Cloudflare stack (ARCHITECTURE-v2 §6, decided 2026-11-10).
+  // Local development uses Miniflare's local D1 (wrangler d1 --local /
+  // vite dev share .wrangler/state). The database_id below is a
+  // PLACEHOLDER: production requires a real remote D1
+  // (`wrangler d1 create talents`) whose id replaces it — see README P2.
+  "name": "talents",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "talents-dev",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Workers custom domains attached 2026-11-10 via the API (talents.sh +
+  // mcp.talents.sh → this Worker); the zone activated the same day, so
+  // wrangler owns them from here on.
+  "routes": [
+    { "pattern": "talents.sh", "custom_domain": true },
+    { "pattern": "mcp.talents.sh", "custom_domain": true }
+  ],
+  // Think advisor (P2 remainder): Durable Object with SQLite storage.
+  "durable_objects": {
+    "bindings": [{ "name": "TalentAdvisor", "class_name": "TalentAdvisor" }]
+  },
+  // Enrichment (Tranche 1): R2 display assets — Miniflare simulates
+  // R2 locally, so unlike the discovery bindings below this one is
+  // safe (and useful) in local dev too.
+  "r2_buckets": [{ "binding": "ASSETS", "bucket_name": "talents-assets" }],
+  // Discovery (P5) bindings (AI / Vectorize / Queues / cron) live ONLY
+  // in wrangler.deploy.jsonc: Workers AI is not simulated locally, and
+  // an "ai" binding makes `wrangler dev` demand an authenticated
+  // remote-proxy session, which breaks credential-free local runs
+  // (the P2 gate boots this config). Local dev therefore exercises
+  // the designed graceful degradation (keyword search, no queue);
+  // the queue consumer + cron paths are covered by unit tests and
+  // the live deployment.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TalentAdvisor"] }],
+  "vars": {
+    // Anthropic model for the advisor (the key is a secret, never a var).
+    "TALENTS_ADVISOR_MODEL": "claude-haiku-5-5",
+    // Clerk publishable key (PUBLIC by design). TEST key — see
+    // wrangler.deploy.jsonc.
+    "CLERK_PUBLISHABLE_KEY": "pk_test_a2luZC1hcGhpZC03ODQyLmNsZXJrLmFjY291bnRzLmRldiQ"
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "target": "garrytan/gstack",
+  "marketplaceName": null,
+  "fetchedAt": "2026-11-10T20:41:03.252Z",
+  "total": 71,
+  "ok": 70,
+  "deadLetter": 1,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "garrytan/gstack",
+      "url": "https://talents.sh/skills/garrytan/gstack",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "SKILL.md",
+        ".env.example",
+        ".gitattributes",
+        ".gitignore",
+        ".gitlab-ci.yml",
+        ".osv-scanner.toml",
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "BROWSER.md",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "DESIGN.md",
+        "ETHOS.md",
+        "LICENSE",
+        "NOTICE.md",
+        "README.md",
+        "SECURITY.md",
+        "SKILL.md.tmpl",
+        "USING_GBRAIN_WITH_GSTACK.md",
+        "VERSION",
+        "bun.lock"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "2ae9844d0c31f54f8914924ef3c3094079c199a35fa75794a09e122479a81bd4"
+    },
+    {
+      "id": "garrytan/autoplan",
+      "url": "https://talents.sh/skills/garrytan/autoplan",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "autoplan/SKILL.md",
+        "autoplan/DRIVER.md",
+        "autoplan/DRIVER.md.tmpl",
+        "autoplan/SKILL.md.tmpl",
+        "autoplan/shadow-decider.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "ec3802e487848a49642d3de1dfbb7ea05b7577108db9de52d3cc3e56108b2955"
+    },
+    {
+      "id": "garrytan/benchmark-models",
+      "url": "https://talents.sh/skills/garrytan/benchmark-models",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "benchmark-models/SKILL.md",
+        "benchmark-models/SKILL.md.tmpl"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "c584d1cd411e3df68c857353586e851704e890d045f7c99aaa22aad7e05f0ab6"
+    },
+    {
+      "id": "garrytan/benchmark",
+      "url": "https://talents.sh/skills/garrytan/benchmark",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "benchmark/SKILL.md",
+        "benchmark/SKILL.md.tmpl"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "f363cb2e05944328101da07a90753f92f85715b915468371e86723e2593500ba"
+    },
+    {
+      "id": "garrytan/browse",
+      "url": "https://talents.sh/skills/garrytan/browse",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "browse/SKILL.md",
+        "browse/PLAN-snapshot-dropdown-interactive.md",
+        "browse/SKILL.md.tmpl"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "df8078362193b521cfb2b0486d6ee06522ef7f15ad03c4c07f1d33422d2d32ff"
+    }
+  ],
+  "deadLetters": [
+    {
+      "entryName": "gstack",
+      "reason": "duplicate skill name in repo scan: \"gstack\" already provided by an earlier SKILL.md in garrytan/gstack"
+    }
+  ]
+}

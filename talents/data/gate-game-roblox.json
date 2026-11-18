@@ -1,0 +1,29 @@
+{
+  "target": "brockmartin/roblox-game-skill",
+  "marketplaceName": null,
+  "fetchedAt": "2026-11-10T20:42:52.204Z",
+  "total": 1,
+  "ok": 1,
+  "deadLetter": 0,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "brockmartin/roblox-game",
+      "url": "https://talents.sh/skills/brockmartin/roblox-game",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "SKILL.md",
+        ".gitignore",
+        "README.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "aa2571fe8ea0ab5561d3a0bf4ca80307efd9c3157365ba96bb47be4329ea7fa7"
+    }
+  ],
+  "deadLetters": []
+}

@@ -1,0 +1,37 @@
+== Typesense health ==
+health fetch failed: fetch failed
+GET http://127.0.0.1:8108/health → null
+FAIL  real Typesense server healthy
+
+== talents index ==
+records:       875
+search engine: LOCAL fallback (no Typesense answered health at http://127.0.0.1:8108)
+search index:  875 documents (local)
+FAIL  index used the Typesense engine
+
+== SSR pages (talents serve --port 4399) ==
+search engine: LOCAL fallback (no Typesense answered health at http://127.0.0.1:8108)
+search index:  875 documents (local)
+records:       875
+talents.sh P1 SSR → http://127.0.0.1:4399  (routes: / · /skills/{owner}/{name} · /{owner} · /search · /s/{owner}/{name})
+PASS  GET / → 200
+PASS  GET / renders trending record cards — cockroachdb/cockroachdb, mattpocock/mattpocock-skills, duendesoftware/duende-skills, anthropics/example-skills, mlflow/mlflow, garrytan/gstack, heygen-com/core-skills, clickhouse/clickhouse-best-practices
+  snippet: <h2>Trending in the catalog</h2>
+PASS  GET /skills/anthropics/xlsx → 200
+PASS  skill page has JSON-LD block
+PASS  JSON-LD parses and names the record
+PASS  skill page shows the derived declaration
+PASS  skill page shows the attestation hash — feb7f836be881f447b5168a9002f5c4e6d1e6aa8badaf033cc9782f3998af176
+PASS  skill page shows the use panel
+  snippet: Indexed in place — Talents stores metadata + attestation, never a copy. Installs resolve from this source, pinned to the ref above.
+PASS  GET /anthropics → 200 with records
+PASS  GET /s/anthropics/xlsx → 301 — status 301
+PASS  redirect target is the canonical skill URL — location: /skills/anthropics/xlsx
+PASS  GET /skills/nope/nothere → 404
+
+== Search gate (via serve, backed by Typesense) ==
+PASS  q=pdf finds anthropics/pdf first → [anthropics/pdf, garrytan/make-pdf, anthropics/canvas-design, carboneio/carbone-skill, anthropics/docx, skillmds/docs-writing, …] (9 results)
+PASS  q=document finds anthropics/document-skills → [garrytan/document-generate, garrytan/document-release, donchitos/reverse-document, wshobson/documentation-standards, wshobson/code-documentation, wshobson/documentation-generation, …] (20 results)
+PASS  q=pdff (typo) still finds anthropics/pdf → [anthropics/pdf, garrytan/make-pdf, anthropics/canvas-design, carboneio/carbone-skill, anthropics/docx, skillmds/docs-writing, …] (9 results)
+PASS  q=pdf&kind=skill returns only skills → [anthropics/pdf, garrytan/make-pdf, anthropics/canvas-design, anthropics/docx] (4 results)
+PASS  q=security finds 42crunch-ai/42crunch-api-security-testing → [skillmds/security, paperclipai/deal-with-security-advisory, donchitos/security-audit, 42crunch-ai/42crunch-api-security-testing, wshobson/security-scanning, wshobson/frontend-mobile-security, …] (20 results)

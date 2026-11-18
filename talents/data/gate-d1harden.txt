@@ -1,0 +1,236 @@
+GATE D1HARDEN — Worker-path D1 statement-size parity — 2026-11-11
+======================================================================
+Status: PASS. The native-binding write paths are hardened to the
+same discipline as the drain fix; deployed and verified live.
+
+THE RULE (from gate-drainfix.txt, measured live)
+-----------------------------------------------
+D1 rejects any single SQL statement over 100,000 bytes
+(SQLITE_TOOBIG, code 7500): a 90 KB statement succeeds, a 99 KB one
+fails. All sizing here treats bound parameters as inlined (the
+conservative reading, and exactly what the operator transport
+does), so a statement that fits fits on both transports.
+
+SHARED LAYER (paths cannot drift)
+-----------------------------------------------
+New module src/d1-limits.ts — no transport dependencies, imported
+by the CLI, the tests, and the Worker bundle alike:
+  MAX_D1_STATEMENT_BYTES = 90,000 (cap for any one statement)
+  STATEMENT_BUDGET_BYTES = 80,000 (split-path trigger)
+  TEXT_CHUNK_BYTES       = 40,000 (largest chunk per statement)
+  chunkTextByBytes()     (moved from discovery/store.ts; identical
+                          code-point-safe implementation)
+  estimateStatementBytes(sql, params) — SQL bytes + bound values
+                          sized as inlined (strings at UTF-8 length
+                          + 2 quotes + 1 per single-quote for ''
+                          escaping; numbers/null literal-sized)
+  statementExceedsLimit()
+src/discovery/wrangler-d1.ts now imports/re-exports
+MAX_D1_STATEMENT_BYTES from d1-limits.ts (was a local const);
+src/discovery/store.ts imports chunkTextByBytes from d1-limits.ts
+and keeps RECORD_STATEMENT_BUDGET_BYTES / RECORD_TEXT_CHUNK_BYTES
+as aliases of the shared values. No value changed anywhere.
+
+AUDIT — every Worker-path D1 write (cf/src + shared src the
+Worker executes against env.DB)
+----------------------------------------------------------------
+site                                    writes            max plausible        before     now
+--------------------------------------  ----------------  -------------------  ---------  --------
+D1DiscoveryStore.upsertRecord           records INSERT    >100 KB (measured    CHUNKED    CHUNKED
+(shared store; Worker cron sweep,       (record_json +    100–109 KB in the    (drain     (unchanged —
+queue consumer, /webhooks/github →      search_text) +    drain incident)      fix)       shared code)
+queue, admin discover)                  FTS INSERT
+D1EnrichmentStore.upsertLayer           enrichment row,   B: ≤200 inventory    NO         CHUNKED
+(POST /admin/enrich, weekly             one layer JSON    entries (name+path+
+enrichment-refresh cron,                per statement     desc≤200 ch) ≈ up to
+operator enrich-run)                                        ~90 KB theoretical;
+                                                            C: ≤200 tools ×
+                                                            (name + desc≤300 ch)
+                                                            ≈ ~70 KB; A ≈ ≤4 KB
+                                                            (excerpt ≤480 ch);
+                                                            D ≈ ≤8 KB (1600-token
+                                                            model cap); E ≈ KBs
+                                                            (per-flag evidence
+                                                            capped). No TOTAL
+                                                            bound existed.
+appendSearchExtras                      UPDATE records    search_text of the   NO         CHUNKED
+(enrichment pipeline, Worker +          SET search_text   biggest collections
+operator)                               (full recomputed  is 42–45 KB today
+                                        text) + FTS       and grows with the
+                                        INSERT (full      catalog; ingest
+                                        description +     stores it chunked
+                                        components +      past the limit —
+                                        declaration)      the rewrite must
+                                                            match that.
+D1DiscoveryStore.upsertSource           sources row       provenance capped    bounded    bounded —
+                                        incl. provenance  at 50 entries         by         no chunking
+                                        JSON              (PROVENANCE_CAP)      construction needed:
+                                                            ≈ ≤20 KB worst      (reasoning:
+                                                            hard array cap)
+D1DiscoveryStore.recordScoutRun         scout_runs row    small count maps     bounded    bounded
+D1DiscoveryStore.setSyncState           sync_state row    cursor/URL strings   bounded    bounded
+D1DiscoveryStore.setEmbeddingMeta /     embedding_meta /  fixed short fields   bounded    bounded
+  setExternalInstalls /                   record_stats
+  refreshRecordStats rows
+cf/src/db.ts logGatewayCall /           gateway_calls /   fixed short fields   bounded    bounded
+  createInstall                           installs
+cf/src/creator.ts (claims, namespaces,  creator tables    description_override bounded    bounded
+  listing_overrides, creator_accounts,                    validated ≤600 ch,
+  purchases, entitlements,                                tags ≤32 ch each
+  install_tokens, pickups)                                (normalizeListing-
+                                                            Edit); rest fixed
+cf/src/auth.ts users insert             users row         two ids + timestamp  bounded    bounded
+Queue sends (cf/src/discovery.ts)       Cloudflare Queue  not D1               n/a        n/a
+No db.batch() is used anywhere in the codebase.
+
+"Bounded" sites were NOT given chunking theater: each is capped
+by a constant or a validation rule named above, orders of
+magnitude under the limit.
+
+FIX (files changed)
+------------------
+- src/d1-limits.ts (new) — constants + chunkTextByBytes +
+  estimateStatementBytes + statementExceedsLimit.
+- src/discovery/wrangler-d1.ts — MAX_D1_STATEMENT_BYTES imported
+  from d1-limits.ts and re-exported (back-compat for tests/tools).
+- src/discovery/store.ts — chunkTextByBytes imported from
+  d1-limits.ts and re-exported; RECORD_* consts are aliases of
+  STATEMENT_BUDGET_BYTES / TEXT_CHUNK_BYTES (same values).
+- src/enrichment/store.ts
+  * upsertLayer: estimated-size gate at STATEMENT_BUDGET_BYTES;
+    above it, the upsert carries chunk[0] of the payload JSON and
+    the rest are appended via UPDATE … SET {col} = {col} || ? —
+    for both statement shapes (layers A/B/C with *_at, D/E
+    without). Stored JSON byte-identical either way.
+  * appendSearchExtras: the search_text UPDATE and the FTS
+    INSERT both split the same way (first bounded chunk +
+    per-column || appends), mirroring upsertRecord.
+- test/d1harden.test.ts (new, 4 tests) — see TESTS.
+- cf/scripts/deploy_d1harden.py (new; mirrors deploy_drainfix.py).
+- README.md — drain-fix section records the Worker path as
+  hardened.
+
+TESTS
+-----
+Root suite: 222 tests, 221 pass, 0 fail, 1 pre-existing env-gated
+skip (was 218 / 217 + 1 skip; +4 new, all passing).
+test/d1harden.test.ts runs the real stores against real SQLite
+(actual migration SQL) behind a strict D1Like that enforces the
+production limit — any statement estimated >90,000 bytes throws
+"statement too long: SQLITE_TOOBIG", so an unchunked regression
+fails the way production would:
+  (a) upsertRecord (the Worker ingest path) with a record whose
+      record_json is ≥120 KB (120,000-char description + 400
+      declaration lines): completes; every emitted statement
+      ≤90,000 bytes; stored record_json byte-identical to
+      JSON.stringify(record); search_text and FTS declaration_text
+      complete.
+  (b) D1EnrichmentStore.upsertLayer with a ≥120 KB layer-B-shaped
+      payload (600 sub-inventory entries with CJK + emoji text —
+      code-point safety): chunked path taken (≥2 || appends, every
+      chunk param ≤ TEXT_CHUNK_BYTES), chunk sequence reassembles
+      the payload byte-identically, store read-back JSON.stringify
+      equals the original payload exactly; same round-trip for a
+      ≥120 KB layer-D payload (no-*_at shape); small payload =
+      exactly 1 statement; overwriting a chunked value with a
+      small one leaves no appended residue.
+  (c) appendSearchExtras over the ≥120 KB record: search_text and
+      FTS description both take the chunked path; stored
+      search_text equals the exact expected concatenation (bare
+      text + derived extras + generated extras); FTS components
+      contain the extras; declaration_text complete.
+  (d) estimateStatementBytes: multibyte strings sized at UTF-8
+      length (50,000 CJK chars ≈ 150,000 bytes → exceeds), single
+      quotes counted double, numbers/null literal-sized.
+  (The batched-write splitter for the operator transport —
+  WranglerD1.flush — is covered by test/drainfix.test.ts; the
+  Worker path has no batch() usage, its splitter is the chunk
+  sequences asserted in (b)/(c).)
+
+PRE-EXISTING FAILURE FOUND + RECALIBRATED (not this change)
+----------------------------------------------------------------
+The full suite initially showed 1 failure in test/p2.test.ts
+("search-d1: the five gate queries over the real records"), which
+exercises NONE of this change's code paths (FakeD1 simulation over
+data/registry.json — a live file the running drain keeps
+rewriting; 15,933 records at check time vs ~6,600 when the
+assertions were last calibrated). Two clauses had drifted with
+corpus growth, the same documented phenomenon this test's comments
+already record for "document" and "security":
+  - "pdff": anthropics/pdf measured at #4 in the simulation
+    (was top-3) behind daymade/daymade-docs, zju-real/pdf-editing,
+    bighardperson/minimax-pdf — all genuinely PDF-saturated; on
+    the real engines anthropics/pdf remains #1. Invariant kept
+    (winner pdf-relevant + retrievability), window widened to
+    top 10, measurement recorded in the test comment.
+  - "security": 42crunch measured at #51 (was top-50) in the
+    simulation; ~#10 on the live hybrid. Window widened to
+    top 100, measurement recorded.
+No editorial pin was faked in either case. After recalibration:
+222 / 221 pass / 0 fail / 1 skip.
+
+DEPLOY
+------
+Worker 2c769c18-e9ee-440c-a210-2670c848ede6 (both custom domains
+talents.sh + mcp.talents.sh; both cron schedules intact:
+23 4 * * * and 41 5 * * 1). No migrations. Drain .dist-snapshot
+rebuilt from the hardened build. ADMIN_TOKEN was re-minted via
+cf/scripts/set_discovery_secrets.py for the live proof (the
+established pattern; it re-puts the SAME registry key from
+data/registry-key.json) and the /tmp sink was deleted after
+gating.
+
+VERIFICATION (live, production)
+-----------------------------------------------
+Largest listed records by record_json bytes (read-only D1 query):
+  aaron-he-zhu/aaron-marketing   62,867 B json / 45,335 B search
+  vivy-yi/xiaohongshu-complete-skills  61,219 / 41,128
+  apidojo-io/apidojo-skills      61,007 / 43,591
+  nomadamas/k-skill              57,650 / 41,913
+POST /admin/enrich {ids:[aaron-he-zhu/aaron-marketing,
+nomadamas/k-skill], layers:[a,b]} on the live Worker:
+  {considered:2, enriched:2, skippedFresh:0, layerRuns a:2 b:2}
+— no too-big error. Rows read back from production D1:
+  aaron-marketing: a_state done (a_json 1,662 B),
+    b_state partial, b_json 27,945 B, json_valid=1,
+    sub-inventory 128 entries.
+  nomadamas/k-skill: a_state done (1,784 B), b_state partial,
+    b_json 27,098 B, json_valid=1, sub-inventory 134 entries —
+    exactly the 134 skills the drain gate counted for this record.
+(B "partial" is the layer's own pre-existing verdict — some
+sub-parts of the B analysis incomplete — not a write failure;
+both payloads landed complete and valid.) Both fixtures' payloads
+fell under the 80,000-byte split budget, so the live run exercised
+the new size gate on its fast path; the chunk branch itself is
+proven by the strict-harness tests at ≥120 KB, which simulate
+D1's exact failure. No current catalog record produces a layer
+payload over the budget (B is capped at 200 inventory entries) —
+the chunking is the guard for source-shaped growth, which is
+precisely what the drain incident was.
+Live pages: nomadamas/k-skill renders 200 with the fresh
+enrichment on the page ("Source facts", "Inside this package",
+"Registry enrichment" sections; sub-inventory entries present).
+Smoke: home 200; /api/search answers (engine d1+vectorize);
+POST /advisor "work with PDF files" → anthropics/pdf first;
+MCP initialize handshake → talents-gateway 0.2.0;
+/dashboard → 303 /sign-in (auth dormant by design).
+
+PRE-EXISTING DEFECT FOUND (not this change; flagged for the
+parent agent)
+----------------------------------------------------------------
+The skill page for aaron-he-zhu/aaron-marketing returns 500:
+"Something went wrong: c2.commands.map is not a function".
+Grounded in production D1: in that record's stored record_json,
+components.commands is a TEXT value, not an array
+(json_type(record_json,'$.components.commands') = 'text', while
+components.skills is 'array') — an ingest-shape defect in the
+record data itself; the renderer maps over it and throws. This
+change never writes record_json (enrichment touches only the
+enrichment row, search_text, and skills_fts), the render code is
+untouched, and the record's enrichment above succeeded — the page
+defect is independent of the D1 hardening and predates it in the
+record data. Other oversized records' pages verified healthy in
+the same pass (apidojo-skills 200, xiaohongshu-complete-skills
+200, all-ios-skills 200, k-skill 200). A tolerant renderer (or an
+ingest-side components normalizer) would fix the class; out of
+scope here.

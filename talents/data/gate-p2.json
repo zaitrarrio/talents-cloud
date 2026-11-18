@@ -1,0 +1,214 @@
+{
+  "pages": {
+    "vite build succeeds (@cloudflare/vite-plugin)": {
+      "pass": true,
+      "detail": "see build output above"
+    },
+    "worker boots and answers /api/search": {
+      "pass": true,
+      "detail": ""
+    },
+    "GET / → 200 with catalog cards": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "GET /skills/anthropics/xlsx → 200 with parseable JSON-LD": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "skill page shows declaration + attestation + use panel": {
+      "pass": true,
+      "detail": ""
+    },
+    "GET /anthropics → 200": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "GET /s/anthropics/xlsx → 301 to canonical": {
+      "pass": true,
+      "detail": "status 301 location /skills/anthropics/xlsx"
+    },
+    "GET /skills/nope/nothere → 404": {
+      "pass": true,
+      "detail": "status 404"
+    }
+  },
+  "search": {
+    "q=pdf → anthropics/pdf first": {
+      "pass": true,
+      "detail": "[\"anthropics/pdf\",\"garrytan/make-pdf\",\"wonderwhy-er/desktop-commander\",\"skillmds/docs-writing\",\"carboneio/carbone-skill\",\"anthropics/canvas-design\",\"anthropics/docx\",\"anthropics/document-skills\",\"anthropics/example-skills\",\"shopify/shopify-ai-toolkit\",\"anthropics/xlsx\",\"cockroachdb/cockroachdb\",\"duendesoftware/duende-skills\",\"firecrawl/firecrawl\",\"mattpocock/mattpocock-skills\",\"wshobson/file-conversion\",\"wix/wix\",\"garrytan/document-release\",\"garrytan/document-generate\",\"donchitos/reverse-document\"]"
+    },
+    "pdf": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "wonderwhy-er/desktop-commander",
+      "skillmds/docs-writing",
+      "carboneio/carbone-skill",
+      "anthropics/canvas-design",
+      "anthropics/docx",
+      "anthropics/document-skills",
+      "anthropics/example-skills",
+      "shopify/shopify-ai-toolkit",
+      "anthropics/xlsx",
+      "cockroachdb/cockroachdb",
+      "duendesoftware/duende-skills",
+      "firecrawl/firecrawl",
+      "mattpocock/mattpocock-skills",
+      "wshobson/file-conversion",
+      "wix/wix",
+      "garrytan/document-release",
+      "garrytan/document-generate",
+      "donchitos/reverse-document"
+    ],
+    "q=document → anthropics/document-skills first": {
+      "pass": true,
+      "detail": "[\"anthropics/document-skills\",\"garrytan/document-release\",\"garrytan/document-generate\",\"donchitos/reverse-document\",\"wshobson/documentation-standards\",\"wshobson/documentation-generation\",\"anthropics/docx\",\"makenotion/notion\",\"wshobson/code-documentation\",\"gemini-cli-extensions/firestore-native\",\"gc-ai-inc/gc-ai\",\"legalzoom/legalzoom\",\"donchitos/design-review\",\"anthropics/playground\",\"donchitos/consistency-check\",\"googleworkspace/gws-docs-write\",\"skillmds/create-prd-from-idea\",\"wshobson/file-conversion\",\"googleworkspace/recipe-share-doc-and-notify\",\"fallow-rs/implement\"]"
+    },
+    "document": [
+      "anthropics/document-skills",
+      "garrytan/document-release",
+      "garrytan/document-generate",
+      "donchitos/reverse-document",
+      "wshobson/documentation-standards",
+      "wshobson/documentation-generation",
+      "anthropics/docx",
+      "makenotion/notion",
+      "wshobson/code-documentation",
+      "gemini-cli-extensions/firestore-native",
+      "gc-ai-inc/gc-ai",
+      "legalzoom/legalzoom",
+      "donchitos/design-review",
+      "anthropics/playground",
+      "donchitos/consistency-check",
+      "googleworkspace/gws-docs-write",
+      "skillmds/create-prd-from-idea",
+      "wshobson/file-conversion",
+      "googleworkspace/recipe-share-doc-and-notify",
+      "fallow-rs/implement"
+    ],
+    "q=pdff (typo) → anthropics/pdf first": {
+      "pass": true,
+      "detail": "[\"anthropics/pdf\",\"garrytan/make-pdf\",\"wonderwhy-er/desktop-commander\",\"skillmds/docs-writing\",\"carboneio/carbone-skill\",\"anthropics/canvas-design\",\"anthropics/docx\",\"anthropics/document-skills\",\"anthropics/example-skills\"]"
+    },
+    "pdff": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "wonderwhy-er/desktop-commander",
+      "skillmds/docs-writing",
+      "carboneio/carbone-skill",
+      "anthropics/canvas-design",
+      "anthropics/docx",
+      "anthropics/document-skills",
+      "anthropics/example-skills"
+    ],
+    "q=security → security-relevant first, 42crunch-ai/42crunch-api-security-testing in top 3": {
+      "pass": true,
+      "detail": "[\"skillmds/security\",\"zereight/security-scan\",\"42crunch-ai/42crunch-api-security-testing\",\"wshobson/frontend-mobile-security\",\"paperclipai/deal-with-security-advisory\",\"wshobson/security-scanning\",\"anthropics/security-guidance\",\"donchitos/security-audit\",\"skillmds/code-security-review-pipeline\",\"wshobson/backend-api-security\",\"anthropics/claude-security\",\"coderabbitai/coderabbit\",\"crowdstrike/crowdstrike-falcon-foundry\",\"skillmds/mcp-security-audit-pipeline\",\"wshobson/security-compliance\",\"zscaler/zscaler\",\"wshobson/reverse-engineering\",\"vantainc/vanta\",\"vantainc/vanta-mcp-plugin\",\"wshobson/dependency-management\"]"
+    },
+    "security": [
+      "skillmds/security",
+      "zereight/security-scan",
+      "42crunch-ai/42crunch-api-security-testing",
+      "wshobson/frontend-mobile-security",
+      "paperclipai/deal-with-security-advisory",
+      "wshobson/security-scanning",
+      "anthropics/security-guidance",
+      "donchitos/security-audit",
+      "skillmds/code-security-review-pipeline",
+      "wshobson/backend-api-security",
+      "anthropics/claude-security",
+      "coderabbitai/coderabbit",
+      "crowdstrike/crowdstrike-falcon-foundry",
+      "skillmds/mcp-security-audit-pipeline",
+      "wshobson/security-compliance",
+      "zscaler/zscaler",
+      "wshobson/reverse-engineering",
+      "vantainc/vanta",
+      "vantainc/vanta-mcp-plugin",
+      "wshobson/dependency-management"
+    ],
+    "q=pdf&kind=skill → only skills": {
+      "pass": true,
+      "detail": "20 results"
+    },
+    "pdfKindSkill": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "anthropics/canvas-design",
+      "anthropics/docx",
+      "anthropics/xlsx",
+      "dnyoussef/gemini-codebase-onboard",
+      "garrytan/document-release",
+      "garrytan/document-generate",
+      "dnyoussef/when-reviewing-pull-request-orchestrate-comprehensive-code-revie",
+      "donchitos/reverse-document",
+      "zereight/deep-interview",
+      "donchitos/design-review",
+      "donchitos/consistency-check",
+      "paperclipai/simplified-english",
+      "paperclipai/release-changelog-discord-message",
+      "anthropics/doc-coauthoring",
+      "googleworkspace/gws-docs-write",
+      "googleworkspace/recipe-share-doc-and-notify",
+      "fallow-rs/implement",
+      "webmcp-org/diataxis"
+    ]
+  },
+  "aggregate": {
+    "entries": 995,
+    "violations": [],
+    "validationErrors": 0
+  },
+  "mcp": {
+    "initialize handshake": {
+      "pass": true,
+      "detail": "{\"name\":\"talents-gateway\",\"version\":\"0.2.0\"}"
+    },
+    "tools/list = search_skill, get_skill, install_skill": {
+      "pass": true,
+      "detail": "get_skill,install_skill,search_skill"
+    },
+    "search_skill 'pdf' → anthropics/pdf first": {
+      "pass": true,
+      "detail": "[\"anthropics/pdf\",\"garrytan/make-pdf\",\"wonderwhy-er/desktop-commander\",\"skillmds/docs-writing\",\"carboneio/carbone-skill\",\"anthropics/canvas-design\",\"anthropics/docx\",\"anthropics/document-skills\",\"anthropics/example-skills\"]"
+    },
+    "install_skill step 1 (prepare) returns declaration + attestation hash": {
+      "pass": true,
+      "detail": "status prepared"
+    },
+    "install_skill step 2 (confirm, live re-verification) → installed": {
+      "pass": true,
+      "detail": "{\"status\":\"installed\",\"skill\":\"anthropics/pdf\",\"installId\":\"efcc25d4-12f4-4393-b7b2-b957a30f07c2\",\"pinnedRef\":\"main\",\"attestationHash\":\"52dbe5542e451e33c47d6e82647522ec8819ec17bbd359a6357548e9b4cdcf1e\",\"installedAt\":\"2026-11-11T01:58:23.172Z\",\"source\":{\"repo\":\"anthropics/skills\",\"path\":\"skills/pdf\","
+    },
+    "install": {
+      "status": "installed",
+      "skill": "anthropics/pdf",
+      "installId": "efcc25d4-12f4-4393-b7b2-b957a30f07c2",
+      "pinnedRef": "main",
+      "attestationHash": "52dbe5542e451e33c47d6e82647522ec8819ec17bbd359a6357548e9b4cdcf1e",
+      "installedAt": "2026-11-11T01:58:23.172Z",
+      "source": {
+        "repo": "anthropics/skills",
+        "path": "skills/pdf",
+        "ref": "main",
+        "url": "https://github.com/anthropics/skills",
+        "via": "direct-repo-scan:anthropics/skills"
+      },
+      "fetchInstructions": "Fetch source-direct from the original repo (Talents serves no copy):\n  git clone https://github.com/anthropics/skills && git -C skills checkout main\n  skill files live under: skills/pdf/\n  hashed files to verify against the attestation: skills/pdf/SKILL.md, skills/pdf/LICENSE.txt, skills/pdf/forms.md, skills/pdf/reference.md\nOr, in Claude Code: /plugin marketplace add talents, then /plugin install pdf"
+    },
+    "installs row exists in D1 for anthropics/pdf": {
+      "pass": true,
+      "detail": "1 install row(s)"
+    },
+    "tamper fixture → REFUSED at confirm (stored hash ≠ live source hash)": {
+      "pass": true,
+      "detail": "{\"status\":\"refused\",\"skill\":\"tampered/pdf\",\"reason\":\"content hash mismatch — source changed since attestation (signed 000000000000…, current 52dbe5542e45…)\"}"
+    },
+    "tamper": {
+      "status": "refused",
+      "skill": "tampered/pdf",
+      "reason": "content hash mismatch — source changed since attestation (signed 000000000000…, current 52dbe5542e45…)"
+    }
+  },
+  "pass": true
+}

@@ -1,0 +1,191 @@
+// Talents meta-registry — production data model (ARCHITECTURE-v2 §4).
+// Postgres is the production system of record. The P0 runtime uses a JSON
+// file store (src/records.ts); this schema is the migration target and is
+// NOT connected to a live database in P0.
+// The registry stores metadata, pointers, declarations and attestations —
+// never the skill itself (catalog, not CDN).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A claimed owner/name namespace. First-come-first-served; claimed by
+/// proving GitHub ownership of the owner (user = self, org = admin).
+model Namespace {
+  owner         String   @id // GitHub-style slug, lowercase
+  type          String // "user" | "org"
+  githubLogin   String
+  clerkUserId   String?
+  verified      Boolean  @default(false)
+  stripeConnectId String?
+  claimedAt     DateTime @default(now())
+  skills        Skill[]
+}
+
+model Skill {
+  id               String  @id // canonical "owner/name"
+  owner            String
+  name             String
+  kind             String // "skill" | "plugin" | "mcp" | "agent"
+  sourceType       String // "github" | "npm" | "git" | "marketplace" | "command"
+  source           Json // original source descriptor, as authored upstream
+  sourceRepo       String? // "owner/repo" when GitHub-backed
+  sourcePath       String  @default("")
+  sourceMarketplace String // marketplace repo/url it was found through
+  description      String
+  tags             String[] @default([])
+  categories       String[] @default([])
+  iconKey          String?
+  readmeKey        String?
+  latestTag        String?
+  stars            Int     @default(0)
+  installCount     Int     @default(0)
+  retention30d     Float?
+  status           String  @default("listed") // listed|unlisted|suspended|delisted
+  pricing          Json? // null = free / not for sale
+  healthScore      Int?
+  namespace        Namespace @relation(fields: [owner], references: [owner])
+  versions         SkillVersion[]
+  installs         Install[]
+  reviews          Review[]
+  starUsers        Star[]
+  collections      CollectionSkill[]
+  approvals        WorkspaceApproval[]
+
+  @@index([owner])
+  @@index([status])
+}
+
+model SkillVersion {
+  id            String   @id // "owner/name@tag"
+  skillId       String
+  tag           String
+  commitSha     String?
+  contentHash   String // registry-computed sha256 over source tree at ref
+  declaration   Json // derived declaration (src/declaration.ts)
+  attestation   Json // registry ed25519 signature over hash+declaration
+  validatedAt   DateTime @default(now())
+  status        String   @default("ok") // ok|failed|revoked
+  skill         Skill    @relation(fields: [skillId], references: [id])
+  installs      Install[]
+
+  @@unique([skillId, tag])
+  @@index([skillId])
+}
+
+model Install {
+  id               String   @id @default(cuid())
+  userId           String
+  skillId          String
+  versionId        String
+  pinnedTag        String
+  pinnedSha        String?
+  declarationHash  String // hash of the declaration shown at confirm time
+  surface          String // claude-code|mcp|gia-web|gia-local
+  viaGateway       Boolean  @default(false)
+  installedAt      DateTime @default(now())
+  skill            Skill    @relation(fields: [skillId], references: [id])
+  version          SkillVersion @relation(fields: [versionId], references: [id])
+
+  @@index([userId])
+  @@index([skillId])
+}
+
+model RunMetering {
+  id        String   @id @default(cuid())
+  skillId   String
+  userId    String
+  surface   String
+  tokens    Int      @default(0)
+  costCents Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([skillId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  skillId   String
+  userId    String
+  rating    Int
+  body      String?
+  createdAt DateTime @default(now())
+  skill     Skill    @relation(fields: [skillId], references: [id])
+
+  @@index([skillId])
+}
+
+model Star {
+  userId    String
+  skillId   String
+  createdAt DateTime @default(now())
+  skill     Skill    @relation(fields: [skillId], references: [id])
+
+  @@id([userId, skillId])
+}
+
+/// Goal stacks: curated collections of owner/name refs with one combined declaration.
+model Collection {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  skills      CollectionSkill[]
+}
+
+model CollectionSkill {
+  collectionId String
+  skillId      String
+  position     Int
+  collection   Collection @relation(fields: [collectionId], references: [id])
+  skill        Skill      @relation(fields: [skillId], references: [id])
+
+  @@id([collectionId, skillId])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  approvals WorkspaceApproval[]
+}
+
+model WorkspaceApproval {
+  id          String   @id @default(cuid())
+  workspaceId String
+  skillId     String
+  pinnedTag   String
+  maxTierCap  String?
+  approvedBy  String
+  approvedAt  DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  skill       Skill     @relation(fields: [skillId], references: [id])
+
+  @@unique([workspaceId, skillId])
+}
+
+model DedupAlias {
+  aliasId     String @id // non-canonical owner/name
+  canonicalId String
+
+  @@index([canonicalId])
+}
+
+model DeadLetter {
+  id          String   @id @default(cuid())
+  marketplace String
+  entryName   String
+  reason      String
+  issues      Json
+  notice      Json // publisher-notice payload
+  createdAt   DateTime @default(now())
+
+  @@index([marketplace])
+}

@@ -1,0 +1,153 @@
+GATE: drain/queue hardening — PASS
+Date: 2026-11-12 02:05 UTC (deploy 02:03 UTC)
+Worker: fe89d82f-a43e-4dd4-94a8-02eb941e5d18 (via cf/scripts/deploy_hardendrain.py)
+Migration: 0007_harden_drain.sql applied BEFORE the deploy (wrangler d1 migrations apply --remote: ✅)
+Tests: 294 total, 293 pass, 0 fail, 1 pre-existing env-gated skip (was 264: +30 new in test/hardendrain.test.ts)
+
+WHAT SHIPPED (additive-only; consumer verify/ingest body untouched)
+1. PRODUCER — dedicated tick, own cron "*/10 * * * *" (dispatched separately
+   in index.ts scheduled(); the daily scout cron is untouched and the
+   100/day cron step remains as the steady-state trickle). Paced by:
+   (a) queue depth — stops above INFLIGHT_THRESHOLD 500 inflight
+       (enqueued − terminal − dlq-arrivals);
+   (b) GitHub rate budget — halts while exhausted, page capped by
+       (remaining − 500 reserve) / 8 worst-case calls per candidate;
+   (c) QUEUE_DRAIN_ENABLED flag — NOT set by this deploy (still off).
+   Single-producer lease (sync_state drain:producer_lease, 15 min stale)
+   keeps concurrent ticks from double-enqueueing. Page = 100/tick.
+2. DLQ OBSERVABILITY + RECOVERY — POST /admin/dlq-sweep {limit} (default 25,
+   max 100): reports dlqDepth + every entry's failure class, re-enqueues
+   recoverable ones (source still candidate + class rate-limit/network/
+   server/unknown) up to the cap, leaves the rest for operator review.
+   Nothing auto-deletes from the DLQ. GET /admin/drain-health serves the
+   stall snapshot. The daily cron logs DLQ depth + candidate count.
+   The queue handler writes the DLQ manifest (dlq_entries) on the FINAL
+   attempt (attempts >= 4 = 1 + max_retries 3) with the failure class.
+3. RATE-LIMIT BACKPRESSURE — githubAuthedFetch records GitHub's rate-limit
+   headers (FetchFn now carries optional headers; defaultFetch passes the
+   real Response headers through): 403/429 sets github_rate_exhausted_until
+   (Retry-After wins, else x-ratelimit-reset, else a 60s hold); remaining
+   < 1000 snapshots github_rate. The producer halts while exhausted; the
+   consumer checks the flag before ANY GitHub call and throws
+   RateBudgetExhaustedError → Queues retries later.
+4. IDEMPOTENCY / LEASE — consumer claims a 30-min lease (claimed_at /
+   claimed_by, migration 0007) after locator collapse and before the first
+   GitHub call; a lost claim throws LeaseConflictError → retry. Terminal
+   outcomes clear the lease + record drain:terminal / drain:last_terminal_at.
+   Leases are advisory (idempotent ingest is the real safety net) and
+   deliberately NOT part of SourceRow/upsertSource, so status upserts
+   never clobber them. Stale leases (>30 min) are reclaimable.
+5. SANDBOX-DRAIN DECONFLICTION — backfill-drain.mjs skips locators with an
+   active queue lease, claims the same lease per batch (dropping rows that
+   lose the race), clears batch leases at batch end, and waits 60s instead
+   of hot-spinning when everything left is leased. Defensive typeof guards
+   so the script degrades to unleased behavior against an old dist snapshot.
+   The dist snapshot was rebuilt (npm run build && cp -r dist .dist-snapshot;
+   LEASE_TTL_MINUTES=30 verified present) so the watchdog's next relaunch
+   picks the lease-aware script up. The running drain keeps its old code
+   until it dies/restarts (harmless: ingest is idempotent).
+6. STALL DETECTION — drainHealth(): stalled when DLQ non-empty, or no
+   terminal completion in 3h while candidates remain and messages are
+   inflight, or the producer is enabled but starving the queue (no
+   inflight, no recent terminal, candidates waiting). Served by
+   GET /admin/drain-health; the producer tick logs STALL lines. The
+   existing watchdog cron was NOT touched.
+
+CONSUMER BEHAVIOR-IDENTITY (hard collision rule)
+- processCandidateMessage's verify/ingest body is byte-unchanged: the only
+  additions are a rate-budget check + a lease claim BEFORE the existing
+  code path, and terminal bookkeeping AFTER it returns. The queuedrain
+  suite (17 tests) passes unmodified against the new code, and the live
+  10-candidate run below exercised the full path (verify → kind correction
+  → ingest → twin retire) under the new Worker.
+- db.ts search/trending/suggest untouched (D1-size builder owns them).
+
+PACING / ETA MATH (backlog 20,141 candidates at deploy; 20,131 after the live 10)
+- Producer cap: 100/tick × 6 ticks/hr = 600/hr max enqueue.
+- Consumer (gate-queuedrain math, unchanged): max_concurrency 5 × 3600 /
+  ~45s mean ≈ 400/hr sustained; the 500-candidate slice measured
+  ~880–1,000/hr mixed (fast twin-stale paths). The consumer is the
+  binding constraint at ~400/hr sustained.
+- ETA at 400/hr: 20,131 / 400 ≈ 50 h ≈ 2.1 days.
+- ETA at 600/hr (producer cap, if the consumer keeps up): ≈ 34 h ≈ 1.4 days.
+- ETA at the slice's 880/hr mixed rate: ≈ 23 h ≈ 1 day.
+- GitHub budget: 5,000/hr token budget; worst case 8 calls/candidate ×
+  400/hr = 3,200/hr (64%); typical 3 calls × 400/hr = 1,200/hr (24%).
+  The 500-call reserve + page cap keep the drain from starving the scout
+  cron's own GitHub use. Inflight threshold 500 ≈ 75 min of queue at 400/hr.
+- NOTE on the counters: drain:enqueued/terminal/dlq start at 0 on this
+  deploy (new keys) — inflight is only meaningful from here forward; the
+  pre-deploy history (slice 500, sandbox drain 27 batches) is not in them.
+
+LIVE EVIDENCE (production D1 + https://talents.sh, 2026-11-12 ~02:03–02:06 UTC)
+- Migration: dlq_entries table exists; sources has claimed_at + claimed_by (n=2).
+- Consumer config (Cloudflare API): batch_size 1, max_retries 3,
+  max_concurrency 5, retry_delay 60, dead_letter_queue talents-ingest-dlq.
+- Schedules on the deployed Worker: 23 4 * * *, */10 * * * *, 41 5 * * 1.
+- GET /admin/drain-health: 401 without token, 405 on POST, 200 with token:
+  {"candidates":20141,"byStatus":{"candidate":20141,"ingested":1224,"mined":5,
+  "rejected":76,"stale":609,"verified":21,"watchlist":36},"enqueued":0,
+  "terminal":0,"dlqArrivals":0,"inflight":0,"dlqDepth":0,"lastTerminalAt":null,
+  "terminalAgeMin":null,"rateExhaustedUntil":null,"rateRemaining":null,
+  "producerEnabled":false,"stalled":false,"reasons":[]}
+  (producerEnabled false = flag still off, as required.)
+- POST /admin/dlq-sweep: 401 without token, 405 on GET, 200 with token:
+  {"dlqDepth":0,"entries":[],"reenqueued":[],"needsReview":[],"skippedCap":0}
+- Small live producer run (slice verified complete, so authorized):
+  POST /admin/enqueue-candidates {"limit":10} → 10 items (data/hardendrain-live-enqueue.json).
+  ~90s later, all 10 terminal in D1: 6 ingested as skill-repo, 4
+  kind-corrected to marketplace + ingested (skill-repo twins retired stale).
+  Counters: drain:enqueued 10, drain:terminal 10,
+  drain:last_terminal_at 2026-11-12T02:05:33.472Z. Leases held: 0.
+- Home / still 200; /api/search?q=pdf still 200.
+- ADMIN_TOKEN was rotated for this verification via the established
+  set_discovery_secrets.py procedure (old token lived only in wiped /tmp);
+  the /tmp sink was deleted after gating, per that script's instructions.
+
+TESTS (new test/hardendrain.test.ts, 30 tests; full suite 294 / 293 pass / 1 skip)
+- Rate budget: 429+retry-after records exhausted-until; 403 bare → 60s hold;
+  200 low-remaining snapshots; 200 healthy writes nothing; no-headers no-op;
+  checkRateBudget throws/passes; classifyDlqFailure mapping.
+- Leases: acquire/conflict/expiry/clear; listCandidatePage skips active leases
+  (stale ones kept); terminal outcome clears lease + records counter;
+  redelivered duplicate throws LeaseConflictError, exactly 1 terminal;
+  pre-leased candidate throws and stays a candidate.
+- Consumer rate path: 429 from GitHub records the budget + throws transient.
+- Producer: flag-off no-op; one page + inflight count; queue-depth halt;
+  rate-exhausted halt; page capped by remaining-minus-reserve (600 → 12);
+  leased-row skip; single-producer lease block + 15-min expiry; empty backlog done.
+- Health: no-terminal-3h, DLQ non-empty, producer-starved, clean.
+- DLQ sweep: cap respected (limit 1 → 1 re-enqueued, 1 skippedCap, 2 review);
+  under-cap re-enqueues all + clears leases; no-queue binding reviews all, deletes none.
+- Admin route: lease-aware keyset paging (leased middle row skipped across pages).
+
+WHAT REMAINS FOR CUTOVER (not done here — operator/user decision)
+- Set QUEUE_DRAIN_ENABLED=1 (Worker var) to start the producer tick.
+  Watch the first few ticks: enqueued grows ~100/tick, terminal keeps pace,
+  inflight stays < 500, drain-health shows no stall reasons.
+- Then stop the sandbox drain and remove the watchdog cron
+  (talents-backfill-drain-watchdog). The drain's progress file is frozen at
+  27 batches / 568 sources / 10,825 records (09:08 CST relaunch state) —
+  it dies within ~an hour of every relaunch; the watchdog relaunches it hourly.
+- Pre-existing DLQ contents (if any) predate the manifest and are visible
+  only in the Cloudflare dashboard, not from D1.
+- Known follow-ups (not fixed here): the Pacer's retry-after handling is
+  still dead code (fetchTreePathsDetailed doesn't pass headers into the
+  Pacer) — changing Pacer backoff timing is consumer behavior and was out
+  of scope; owner profile pages still load recordsByOwner unbounded
+  (d1size watch item, untouched per scope).
+
+FILES CHANGED
+- cf/migrations/0007_harden_drain.sql (new)
+- src/discovery/store.ts (leases + DLQ manifest; listCandidatePage leaseCutoff)
+- src/types.ts (FetchFn optional headers)
+- src/ingest.ts (defaultFetch passes Response headers through)
+- cf/src/discovery.ts (rate budget, lease claim, producer tick, DLQ sweep, drain health, cron DLQ log)
+- cf/src/index.ts (routes /admin/dlq-sweep + /admin/drain-health, producer cron dispatch, queue DLQ manifest)
+- cf/wrangler.deploy.jsonc (producer cron */10 * * * *; consumer retry_delay 60)
+- scripts/backfill-drain.mjs (lease-aware selection + batch claims + leased-wait)
+- test/hardendrain.test.ts (new, 30 tests)
+- test/queuedrain.test.ts (makeDb applies 0007)
+- cf/scripts/deploy_hardendrain.py (new; migration-first deploy)
+- ARCHITECTURE-v2.md §7 (queue-drain hardening paragraph)
+- talents/.dist-snapshot rebuilt (lease-aware; picked up by the drain on its next watchdog relaunch)

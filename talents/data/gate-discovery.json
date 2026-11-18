@@ -1,0 +1,252 @@
+{
+  "base": "https://talents.sh",
+  "at": "2026-11-10T23:07:27.226Z",
+  "cycle": {
+    "at": "2026-11-10T21:12:21.078Z",
+    "target": "remote",
+    "sweep": {
+      "queriesRun": 9,
+      "found": 20,
+      "uniqueCandidates": 16,
+      "rateLimitHits": 0,
+      "searchCalls": 9
+    },
+    "candidatesSeen": 16,
+    "alreadyKnown": 9,
+    "verified": 2,
+    "rejected": [
+      {
+        "locator": "crsmithdev/aleph",
+        "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+      },
+      {
+        "locator": "tonone-ai/tonone",
+        "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+      },
+      {
+        "locator": "waldoocreator/claude-code-oficina",
+        "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+      },
+      {
+        "locator": "j-nowcow/awesome-korean-agent-skills",
+        "reason": "no marketplace.json, SKILL.md, or plugin.json in tree"
+      },
+      {
+        "locator": "eclipter/agents",
+        "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+      }
+    ],
+    "ingestedSources": [
+      {
+        "locator": "m4bwav/threewright",
+        "kind": "marketplace",
+        "newRecords": 1,
+        "existingSkipped": 0,
+        "deadLetter": 0
+      },
+      {
+        "locator": "itsomidkarami/kraft",
+        "kind": "marketplace",
+        "newRecords": 2,
+        "existingSkipped": 0,
+        "deadLetter": 0
+      }
+    ],
+    "newRecords": 3,
+    "sourcesByStatus": {
+      "ingested": 8,
+      "rejected": 16,
+      "verified": 13
+    },
+    "firstCycleSummary": {
+      "note": "First production cycle of the day (same command, transcribed from CLI stdout in the build log); this file's top-level stats are the second cycle, which re-swept overlapping candidates and still added 3 records from 2 newly-verified sources.",
+      "sweep": {
+        "queriesRun": 9,
+        "found": 17,
+        "uniqueCandidates": 16,
+        "rateLimitHits": 0
+      },
+      "candidatesSeen": 16,
+      "alreadyKnown": 2,
+      "verified": 6,
+      "rejectedCount": 8,
+      "newRecords": 78,
+      "ingestedSources": [
+        {
+          "locator": "asarelcastellanos/claude-skills",
+          "kind": "marketplace",
+          "newRecords": 3,
+          "deadLetter": 0
+        },
+        {
+          "locator": "evch1204/claude-pr-review-skill",
+          "kind": "skill-repo",
+          "newRecords": 1,
+          "deadLetter": 3
+        },
+        {
+          "locator": "paperclipai/paperclip",
+          "kind": "skill-repo",
+          "newRecords": 74,
+          "deadLetter": 9
+        }
+      ],
+      "sourcesByStatusAfter": {
+        "ingested": 6,
+        "rejected": 11,
+        "verified": 13
+      }
+    }
+  },
+  "checks": {
+    "pipeline cycle recorded": {
+      "pass": true,
+      "detail": "verified 2, rejected 5, new records 3, sources {\"ingested\":8,\"rejected\":16,\"verified\":13}"
+    },
+    "pipeline added records or verifiably found none new": {
+      "pass": true,
+      "detail": "3 new record(s)"
+    },
+    "pdf → anthropics/pdf first": {
+      "pass": true,
+      "detail": "anthropics/pdf, garrytan/make-pdf, anthropics/docx"
+    },
+    "document → anthropics/document-skills first": {
+      "pass": true,
+      "detail": "anthropics/document-skills, garrytan/document-release, garrytan/document-generate"
+    },
+    "pdff (typo) → anthropics/pdf first": {
+      "pass": true,
+      "detail": "anthropics/pdf, garrytan/make-pdf, anthropics/document-skills"
+    },
+    "security → 42crunch in top 2 (catalog grew; see report)": {
+      "pass": true,
+      "detail": "skillmds/security, 42crunch-ai/42crunch-api-security-testing, donchitos/security-audit"
+    },
+    "pdf&kind=skill → only skills": {
+      "pass": true,
+      "detail": "20 results"
+    },
+    "build games → game-relevant top 5 or honest partial note": {
+      "pass": true,
+      "detail": "game-relevant in top5: 4, partial=false, engine=d1+vectorize"
+    },
+    "suggest pdf → ≥3 related, no self, document family present": {
+      "pass": true,
+      "detail": "anthropics/document-skills, anthropics/docx, anthropics/pptx, anthropics/skill-creator, anthropics/example-skills, anthropics/algorithmic-art"
+    },
+    "trending → 200 with documented mode": {
+      "pass": true,
+      "detail": "mode=static-fallback, 8 results"
+    },
+    "home renders trending section": {
+      "pass": true,
+      "detail": ""
+    },
+    "skill page renders Related skills rail": {
+      "pass": true,
+      "detail": ""
+    },
+    "webhook push touching SKILL.md → reindex decision + queued": {
+      "pass": true,
+      "detail": "{\"reindex\":true,\"reason\":\"SKILL.md changed: skills/pdf/SKILL.md\",\"queued\":true,\"repo\":\"anthropics/skills\",\"signatureChecked\":false}"
+    },
+    "admin route rejects missing token (401)": {
+      "pass": true,
+      "detail": "status 401"
+    }
+  },
+  "queries": {
+    "pdf": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "anthropics/docx",
+      "anthropics/document-skills",
+      "wonderwhy-er/desktop-commander"
+    ],
+    "document": [
+      "anthropics/document-skills",
+      "garrytan/document-release",
+      "garrytan/document-generate",
+      "donchitos/reverse-document",
+      "anthropics/pdf"
+    ],
+    "pdff": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "anthropics/document-skills",
+      "wonderwhy-er/desktop-commander",
+      "skillmds/docs-writing"
+    ],
+    "security": [
+      "skillmds/security",
+      "42crunch-ai/42crunch-api-security-testing",
+      "donchitos/security-audit",
+      "wshobson/frontend-mobile-security",
+      "paperclipai/deal-with-security-advisory"
+    ],
+    "pdfKindSkill": [
+      "anthropics/pdf",
+      "garrytan/make-pdf",
+      "anthropics/docx",
+      "garrytan/document-release",
+      "garrytan/document-generate"
+    ],
+    "buildGames": {
+      "top": [
+        "gamedev-skills/ebitengine-game",
+        "gamedev-skills/game-jam",
+        "gamedev-skills/godot-export",
+        "donchitos/prototype",
+        "gamedev-skills/game-ui-ux"
+      ],
+      "partial": false,
+      "note": null,
+      "engine": "d1+vectorize"
+    },
+    "spreadsheets": {
+      "top": [
+        "anthropics/xlsx",
+        "anthropics/document-skills",
+        "anthropics/docx"
+      ],
+      "partial": false,
+      "engine": "d1+vectorize"
+    },
+    "meetings": {
+      "top": [
+        "donchitos/patch-notes",
+        "mondaycom/monday-crm",
+        "garrytan/make-pdf"
+      ],
+      "partial": false,
+      "engine": "d1+vectorize"
+    },
+    "watcher": {
+      "top": [
+        "garrytan/hackernews-frontpage",
+        "firecrawl/firecrawl",
+        "garrytan/design-review"
+      ],
+      "partial": false,
+      "engine": "d1+vectorize"
+    }
+  },
+  "pass": true,
+  "suggestPdf": [
+    "anthropics/document-skills",
+    "anthropics/docx",
+    "anthropics/pptx",
+    "anthropics/skill-creator",
+    "anthropics/example-skills",
+    "anthropics/algorithmic-art"
+  ],
+  "trendingMode": "static-fallback",
+  "webhook": {
+    "reindex": true,
+    "reason": "SKILL.md changed: skills/pdf/SKILL.md",
+    "queued": true,
+    "repo": "anthropics/skills",
+    "signatureChecked": false
+  }
+}

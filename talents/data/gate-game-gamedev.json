@@ -1,0 +1,87 @@
+{
+  "target": "gamedev-skills/awesome-gamedev-agent-skills",
+  "marketplaceName": null,
+  "fetchedAt": "2026-11-10T20:42:28.139Z",
+  "total": 78,
+  "ok": 78,
+  "deadLetter": 0,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "gamedev-skills/router",
+      "url": "https://talents.sh/skills/gamedev-skills/router",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "router/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "e642728cec1abca109990cac239be41ff1de4dcd34796793b2ec38848af53f74"
+    },
+    {
+      "id": "gamedev-skills/ai-behavior-trees-utility-ai",
+      "url": "https://talents.sh/skills/gamedev-skills/ai-behavior-trees-utility-ai",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/disciplines/ai-behavior-trees-utility-ai/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "00fbade0edecc1957ca88e31d3b5a7ffbfb539730e5d84d9b5c4a5aa18074bde"
+    },
+    {
+      "id": "gamedev-skills/audio-design",
+      "url": "https://talents.sh/skills/gamedev-skills/audio-design",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/disciplines/audio-design/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "4171a847526920e4504ab4d96f15af935ca9982fefed1f464a540e246b3cfd3e"
+    },
+    {
+      "id": "gamedev-skills/camera-systems",
+      "url": "https://talents.sh/skills/gamedev-skills/camera-systems",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/disciplines/camera-systems/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "bc64e6693713b1508424cf2b9a599ddd3350299991eb6c6d5dbd0a294e094c4f"
+    },
+    {
+      "id": "gamedev-skills/create-game-assets",
+      "url": "https://talents.sh/skills/gamedev-skills/create-game-assets",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/disciplines/create-game-assets/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "04cd9d9faa6f93bc0cbbd154a328ecbf3637357b21e3ad5cb005d5b615bd1439"
+    }
+  ],
+  "deadLetters": []
+}

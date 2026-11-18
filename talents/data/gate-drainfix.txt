@@ -1,0 +1,135 @@
+GATE DRAINFIX — deterministic SQLITE_TOOBIG drain crash — 2026-11-11
+======================================================================
+Status: PASS. Root cause found, fixed, deployed, and verified live
+(2 batches past the stuck point, zero new errors).
+
+ROOT CAUSE (mechanism, measured — not inferred)
+-----------------------------------------------
+D1 rejects any single SQL statement over 100,000 bytes
+(SQLITE_TOOBIG, code 7500). Measured live 2026-11-11 via the D1
+query endpoint: a 90 KB statement succeeds, a 99 KB statement
+fails with "statement too long: SQLITE_TOOBIG [code: 7500]".
+
+The drain's WranglerD1 adapter buffered ALL of a batch's writes
+and flushed them as one `wrangler d1 execute --file` call, with the
+flush OUTSIDE the per-candidate try/catch. Collection/plugin
+records carry record_json AND search_text in ONE INSERT — the
+declaration text appears in both — so large collections crossed
+the limit in a single statement:
+
+  nomadamas/k-skill            record INSERT 100,314 bytes
+  dpearson2699/swift-ios-skills             108,975 bytes
+  pixel-process-ug/superkit-agents          103,121 bytes
+  nexscope-ai/ecommerce-skills              105,563 bytes
+
+(nomadamas/k-skill, dissected: stored record_json 57,650 bytes /
+44,010 chars — 135 declaration lines, 134 skills — plus a
+41,913-byte search_text in the same statement.)
+
+Failure loop: the oversized statement failed its flush, flush()
+had already spliced the pending statements out of the buffer, so
+the good statements buffered WITH it were silently lost; the
+affected candidates stayed 'candidate' and were retried every
+batch (69 ingest errors tallied, same names recurring:
+browser-use/browser-harness-js — itself only 4.4 KB, it was the
+victim of the previous candidate's oversized statement flushed
+during ITS ingest — plus swift-ios-skills, superkit-agents).
+Eventually a batch-end flush (unguarded) contained an oversized
+statement and the uncaught throw killed the process; the watchdog
+relaunched it into the same deterministic crash. Batches stuck at
+23 since the 03:30Z run; newRecords stuck at 7,976.
+
+FIX (files changed)
+------------------
+- src/discovery/wrangler-d1.ts
+  * MAX_D1_STATEMENT_BYTES = 90,000 (10% headroom under the
+    measured 100,000-byte limit); MAX_FLUSH_FILE_BYTES = 512,000;
+    MAX_FLUSH_STATEMENTS = 500 per --file call.
+  * flush() chunks pending statements into bounded --file calls.
+    An oversized single statement is NEVER executed — it goes
+    straight to FlushError.failed. A failed chunk is retried once,
+    statement by statement (the drain's writes are idempotent
+    upserts); good statements commit, bad ones are isolated and
+    reported in a structured FlushError (failed[] with sql/bytes/
+    error + flushed count). flush() never silently drops a batch.
+  * isOversizedStatementError() classifier (FlushError with an
+    over-cap failed statement, or /statement too long|SQLITE_TOOBIG/
+    on the message).
+- src/discovery/store.ts (D1DiscoveryStore.upsertRecord)
+  * RECORD_STATEMENT_BUDGET_BYTES = 80,000; RECORD_TEXT_CHUNK_BYTES
+    = 40,000; chunkTextByBytes() splits by code point, never
+    splitting a surrogate pair.
+  * Fast path unchanged below the budget (exactly the 3 historic
+    statements). Above it, the write is split so every emitted
+    statement stays bounded: record_json is complete from the first
+    statement (only search_text is transiently empty), an over-long
+    record_json is appended in bounded chunks via `||`, search_text
+    and the FTS description/components/declaration_text likewise.
+    Nothing is truncated: the stored row is byte-identical to the
+    fast path's (verified below).
+  * Note for a later pass (NOT this fix): enrichment writes through
+    the Worker's native D1 binding share the same 100 KB statement
+    limit; the operator-side enrich-run path benefits from the
+    adapter fix, the Worker path does not yet chunk.
+- scripts/backfill-drain.mjs
+  * Flush per candidate inside the existing try/catch, so a flush
+    failure attributes to ONE candidate. On a deterministic
+    oversized failure the candidate is dead-lettered (source row ->
+    rejected with the reason, twins retired as rejected) so the
+    drain never loops on it; transient failures still leave it as a
+    candidate. Batch-end and final flushes are guarded (log, never
+    die).
+- test/drainfix.test.ts (8 new tests): chunkTextByBytes code-point
+  safety; fast path = 3 historic statements; chunked path with a
+  120 KB description — every statement <= 90,000 bytes and the
+  reassembled record_json/search_text/declaration_text are
+  byte-identical; over-long declaration_text chunking; flush file
+  splitting (byte + count caps); oversized isolation (good
+  statements commit, bad one never executed); chunk retry;
+  classifier cases.
+- cf/scripts/deploy_drainfix.py (mirrors deploy_lists.py).
+
+DEPLOY
+------
+Worker 47702267-82e8-4f6c-ad6a-2f6276704142 (both custom domains
+talents.sh + mcp.talents.sh; both cron schedules intact: 23 4 * * *
+and 41 5 * * 1). No migrations. Drain .dist-snapshot rebuilt from
+the fixed build (npm run build && cp -r dist .dist-snapshot).
+
+VERIFICATION (live, production D1)
+---------------------------------
+Before: batches 23, newRecords 7,976, verified 463,
+ingestedSources 478, deadLetter 1,129, ingestErrors 69, rejected 28.
+After relaunch with the fixed snapshot (node PID 3617):
+  batches 23 -> 25 (+2 required), newRecords 7,976 -> 8,803 (+827),
+  verified 463 -> 501, ingestedSources 478 -> 522,
+  deadLetter 1,129 -> 1,645, ingestErrors 69 -> 69 (ZERO new
+  errors across both batches), rejected 28 -> 34.
+Drain still alive afterwards (29:28 elapsed at gate time, on
+batch 26). No SQLITE_TOOBIG / "statement too long" in the log
+since the fix.
+
+Poisoned candidates, all resolved (no dead-lettering needed —
+the chunked path ingested them):
+  browser-use/browser-harness-js   -> ingested; record
+    browser-use/cdp listed (json 2,511 bytes)
+  nomadamas/k-skill                -> ingested (marketplace row;
+    skill-repo twin retired stale); record listed
+  dpearson2699/swift-ios-skills    -> ingested (marketplace row)
+  pixel-process-ug/superkit-agents -> ingested
+  nexscope-ai/ecommerce-skills     -> ingested (42 dead-letters
+    are normal per-skill validation dead letters)
+
+Chunked-write integrity (nomadamas/k-skill, read back from
+production D1 and compared against a fresh rebuild):
+  stored record_json parses; 57,650 bytes == fresh rebuild
+  57,650 bytes; declaration lines 135 == fresh; components
+  134 skills == fresh (first animal-pharmacy-search, last
+  zipcode-search); filesHashed 135; search_text 41,913 bytes,
+  complete. Stored row is byte-complete.
+
+TESTS
+-----
+Root suite: 218 tests, 217 pass, 0 fail, 1 pre-existing
+env-gated skip (was 210 / 209 pass + 1 skip before this change;
++8 drainfix tests, all passing).

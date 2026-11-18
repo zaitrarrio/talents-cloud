@@ -1,0 +1,150 @@
+GATE — description-extraction fix (2026-11-11)
+=============================================
+
+ROOT CAUSE
+----------
+File: src/validate.ts — parseSkillFrontmatter, the hand-rolled
+line-based SKILL.md frontmatter parser shared by every ingest path
+("flat scalar keys only"). Two defects:
+
+1. NO YAML BLOCK-SCALAR SUPPORT. For `description: |` (literal) or
+   `description: >` (folded), the parser stored the indicator character
+   as the value and then appended each indented content line through
+   its plain-scalar continuation rule, space-joined. Stored result:
+   "| Preregister a paid eval …" / "> Routes any game-development
+   request …". Block scalars are the most common way published
+   SKILL.md files write long descriptions, so this was catalog-scale.
+
+2. NO SANITY GUARD ON THE VALUE. A frontmatter description that is
+   literally debris IN THE SOURCE passed the non-empty check and was
+   stored verbatim:
+   - dnyoussef/context-cascade writes `description: ---` in its
+     SKILL.md frontmatter (verified at the pinned ref: the file itself
+     says `description: ---`). The parser read it faithfully; nothing
+     rejected a delimiter as a description.
+   - shivamchopra7/claude-skill-directory's agent-creation SKILL.md
+     carries a banner rule as its first frontmatter description:
+     `description: /====…====/`.
+
+AFFECTED CENSUS (production D1, before repair; 11,705 listed records)
+---------------------------------------------------------------------
+- description exactly "---":            2 records
+    dnyoussef/agentdb-semantic-vector-search
+    dnyoussef/reasoningbank-adaptive-learning-with-agentdb
+- description with no letter/digit at all (beyond the two above):
+    1 record — shivamchopra7/agent-creation ("/====…====/" banner)
+- block-scalar residue (description starts "| " or "> "):
+    1,585 records across 74 repos ("| " ×672, "> " ×913) — ALL via the
+    repo-scan path; samples verified against source (gamedev-skills
+    router uses `description: >`, garrytan/gstack eval-plan uses
+    `description: |`, autoclaw-cc xhs-auth uses `description: |`).
+    Legitimate CJK-only descriptions matched the raw SQL sweep but are
+    real content and were NOT touched.
+TOTAL AFFECTED: 1,588 records, 75 repo groups.
+(The task brief estimated 2 records; the sibling sweep showed the
+same root cause at catalog scale. All of it was repaired.)
+
+FIX (code)
+----------
+- src/validate.ts: parseSkillFrontmatter now parses block scalars
+  properly (literal keeps line breaks, folded folds them; chomping
+  +/- and indent indicators handled; following keys not swallowed).
+  New shared helpers: isUsableDescription (usable = contains at least
+  one letter or digit, Unicode-aware), usableDescription (first
+  usable candidate, else ""), bodyDescription (first ATX heading or
+  first usable paragraph of the SKILL.md body; thematic breaks, HTML
+  comments and banner debris skipped).
+- Description picks now go through the guard on every ingest path:
+  src/repo-scan.ts (frontmatter → body heading/paragraph → none),
+  src/ingest.ts (marketplace entry → plugin.json), src/declaration.ts
+  (debris descriptions no longer quoted into declaration lines),
+  src/discovery/scouts/mcp-record.ts and npm-record.ts.
+- src/discovery/pipeline.ts: ingestSource now REFRESHES an
+  already-listed record when the rebuilt record's attestation content
+  hash or description differs (fresh attestation from the builder +
+  the store's existing upsertRecord write — the pipeline's own
+  semantics, no fork); identical rebuilds are still skipped, so sweep
+  re-ingests stay cheap. Return/CycleStats/CLI gained existingUpdated.
+
+TESTS
+-----
+npm test: 192 tests, 191 pass, 1 skipped (pre-existing env-gated
+skip), 0 fail. 14 new tests in test/descfix.test.ts: the three source
+fixtures (frontmatter `description: ---`, banner description,
+block scalars in CJK + English), parser chomping/indent/quoted/
+continuation cases, guard cases (incl. CJK accepted), body
+fallthrough cases, repo-scan end-to-end for each fixture shape, and
+ingestSource update-on-change / skip-on-identical.
+
+DEPLOY
+------
+cf/scripts/deploy_descfix.py (established surrogate pattern, no
+migrations, no seed). Worker version 9fdd51b2-6b57-4593-91ff-45814e5b7049;
+talents.sh + mcp.talents.sh; both cron schedules intact.
+
+REPAIR (scripts/repair-descriptions.mjs; full per-record before/after
+in data/repair-descriptions-result.json)
+---------------------------------------------------------------------
+Every affected repo was rebuilt with the pipeline's own scanner at
+its stored ref and each affected record upserted via
+D1DiscoveryStore.upsertRecord (record_json + search_text + FTS move
+together; fresh attestation from the builder).
+RESULT: repaired 1,588 / unrepaired 0 / unchanged-after-rebuild 0.
+
+Named records, before → after:
+- dnyoussef/agentdb-semantic-vector-search
+    "---" → "AgentDB Semantic Vector Search"   (body-heading fallback)
+- dnyoussef/reasoningbank-adaptive-learning-with-agentdb
+    "---" → "ReasoningBank Adaptive Learning with AgentDB"
+- shivamchopra7/agent-creation
+    "/====…====/" → "AGENT-CREATION SKILL :: VERILINGUA x VERIX EDITION"
+- autoclaw-cc/xhs-auth
+    "| 小红书认证管理技能。… 当用户要求…" → "小红书认证管理技能。…\n当用户要求…" (literal block, clean)
+- gamedev-skills/router
+    "> Routes any game-development request …" → "Routes any game-development request …" (folded, clean)
+- garrytan/eval-plan
+    "| Preregister a paid eval …" → "Preregister a paid eval …" (clean)
+
+Scan-cap notes (informational): dnyoussef/context-cascade (252
+SKILL.md), membranedev/application-skills (3,074) and sundial-org/
+awesome-openclaw-skills (939) exceed the scanner's 200-skill cap —
+the same cap applied at original ingest, so every affected record
+sat inside the scanned window; all were repaired (0 unrepaired).
+
+RE-EMBED
+--------
+Admin token regenerated via cf/scripts/set_discovery_secrets.py
+(registry key re-put unchanged; token sink deleted after use).
+scripts/backfill-embed.mjs sweep 1: 11,705 considered, embedded
+EXACTLY 1,588 (the repaired set), 0 retries, done=true. A second
+confirmation sweep found everything fresh.
+
+POST-REPAIR VERIFICATION
+------------------------
+- D1: description = '---' count = 0; listed records with "| "/"> "
+  prefixed descriptions = 0.
+- Full re-classification of all 11,705 listed records with the fixed
+  guard (repair script --enumerate-only): affected = 0.
+- Live page https://talents.sh/skills/dnyoussef/agentdb-semantic-vector-search
+  shows About = "AgentDB Semantic Vector Search", no "---"
+  description; attestation re-signed 2026-11-11T09:52Z by the repair
+  rebuild; validation clean.
+- Live /api/search?q=agentdb+semantic+vector+search returns the
+  record first with the new description; a query from the router's
+  folded text returns gamedev-skills/router first with the clean
+  folded description.
+
+OPERATIONAL NOTES
+-----------------
+- The backfill drain was not running during the repair (its progress
+  file last checkpointed 08:46 UTC, before this work began; the
+  hourly watchdog owns relaunching it). Its dist snapshot
+  (talents/.dist-snapshot) still held the old parser, so it was
+  refreshed from the fixed build — future drain runs ingest with the
+  fixed extraction.
+- data/registry.json (local mirror) was deliberately NOT written by
+  the repair — the drain owns that file while it runs; D1 is
+  authoritative.
+- Enrichment was not touched: the b_json parsedDescription capture
+  from tranche 1 remains as-is (it re-derives on enrichment's own
+  cadence; layer D already treated "---" as no description).

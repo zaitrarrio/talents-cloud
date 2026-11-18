@@ -1,0 +1,32 @@
+== seed local D1 ==
+== tamper fixture ==
+== vite build (Cloudflare Vite plugin) ==
+PASS  vite build succeeds (@cloudflare/vite-plugin) — see build output above
+== boot Worker (wrangler dev) ==
+PASS  worker boots and answers /api/search
+== pages ==
+PASS  GET / → 200 with catalog cards — status 200
+PASS  GET /skills/anthropics/xlsx → 200 with parseable JSON-LD — status 200
+PASS  skill page shows declaration + attestation + use panel
+PASS  GET /anthropics → 200 — status 200
+PASS  GET /s/anthropics/xlsx → 301 to canonical — status 301 location /skills/anthropics/xlsx
+PASS  GET /skills/nope/nothere → 404 — status 404
+== /api/search (D1 FTS5 trigram) ==
+PASS  q=pdf → anthropics/pdf first — ["anthropics/pdf","garrytan/make-pdf","wonderwhy-er/desktop-commander","skillmds/docs-writing","carboneio/carbone-skill","anthropics/canvas-design","anthropics/docx","anthropics/document-skills","anthropics/example-skills","shopify/shopify-ai-toolkit","anthropics/xlsx","cockroachdb/cockroachdb","duendesoftware/duende-skills","firecrawl/firecrawl","mattpocock/mattpocock-skills","wshobson/file-conversion","wix/wix","garrytan/document-release","garrytan/document-generate","donchitos/reverse-document"]
+PASS  q=document → anthropics/document-skills first — ["anthropics/document-skills","garrytan/document-release","garrytan/document-generate","donchitos/reverse-document","wshobson/documentation-standards","wshobson/documentation-generation","anthropics/docx","makenotion/notion","wshobson/code-documentation","gemini-cli-extensions/firestore-native","gc-ai-inc/gc-ai","legalzoom/legalzoom","donchitos/design-review","anthropics/playground","donchitos/consistency-check","googleworkspace/gws-docs-write","skillmds/create-prd-from-idea","wshobson/file-conversion","googleworkspace/recipe-share-doc-and-notify","fallow-rs/implement"]
+PASS  q=pdff (typo) → anthropics/pdf first — ["anthropics/pdf","garrytan/make-pdf","wonderwhy-er/desktop-commander","skillmds/docs-writing","carboneio/carbone-skill","anthropics/canvas-design","anthropics/docx","anthropics/document-skills","anthropics/example-skills"]
+PASS  q=security → security-relevant first, 42crunch-ai/42crunch-api-security-testing in top 3 — ["skillmds/security","zereight/security-scan","42crunch-ai/42crunch-api-security-testing","wshobson/frontend-mobile-security","paperclipai/deal-with-security-advisory","wshobson/security-scanning","anthropics/security-guidance","donchitos/security-audit","skillmds/code-security-review-pipeline","wshobson/backend-api-security","anthropics/claude-security","coderabbitai/coderabbit","crowdstrike/crowdstrike-falcon-foundry","skillmds/mcp-security-audit-pipeline","wshobson/security-compliance","zscaler/zscaler","wshobson/reverse-engineering","vantainc/vanta","vantainc/vanta-mcp-plugin","wshobson/dependency-management"]
+PASS  q=pdf&kind=skill → only skills — 20 results
+== aggregated marketplace ==
+PASS  marketplace.json parses, name=talents — status 200
+PASS  entry count = listed records (1008) − name-collision skips (13) — 995 entries; skipped: donchitos/bug-triage, donchitos/code-review, garrytan/design-review, garrytan/review, garrytan/ship, paperclipai/test-audit, slackapi/slack, upstash/context7, webmcp-org/release, wshobson/data-engineering, zereight/remember, zereight/review, zereight/verify
+PASS  every entry source points at a non-Talents origin
+PASS  own validator (claude plugin validate mirror) passes
+== MCP gateway ==
+PASS  initialize handshake — {"name":"talents-gateway","version":"0.2.0"}
+PASS  tools/list = search_skill, get_skill, install_skill — get_skill,install_skill,search_skill
+PASS  search_skill 'pdf' → anthropics/pdf first — ["anthropics/pdf","garrytan/make-pdf","wonderwhy-er/desktop-commander","skillmds/docs-writing","carboneio/carbone-skill","anthropics/canvas-design","anthropics/docx","anthropics/document-skills","anthropics/example-skills"]
+PASS  install_skill step 1 (prepare) returns declaration + attestation hash — status prepared
+PASS  install_skill step 2 (confirm, live re-verification) → installed — {"status":"installed","skill":"anthropics/pdf","installId":"efcc25d4-12f4-4393-b7b2-b957a30f07c2","pinnedRef":"main","attestationHash":"52dbe5542e451e33c47d6e82647522ec8819ec17bbd359a6357548e9b4cdcf1e","installedAt":"2026-11-11T01:58:23.172Z","source":{"repo":"anthropics/skills","path":"skills/pdf",
+PASS  installs row exists in D1 for anthropics/pdf — 1 install row(s)
+PASS  tamper fixture → REFUSED at confirm (stored hash ≠ live source hash) — {"status":"refused","skill":"tampered/pdf","reason":"content hash mismatch — source changed since attestation (signed 000000000000…, current 52dbe5542e45…)"}

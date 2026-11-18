@@ -1,0 +1,102 @@
+TALENTS — FULL BACKFILL GATE
+Run window: 2026-11-11T01:35Z → snapshot 2026-11-11T04:35:45Z (drain still running at report time)
+All figures read back from production D1 or live API responses. Nothing fabricated.
+
+BEFORE / AFTER
+  Listed records:            872 → 5,967  (+5,095, 6.8×; still rising — drain live)
+  Live aggregate entries:    5,109 plugin entries in https://talents.sh/.claude-plugin/marketplace.json
+                             (aggregate carries plugin-kind entries; D1 listed count is authoritative.
+                              The creator-experience build redeployed mid-run; coexistence verified —
+                              search responses carried its publisherDescription field.)
+  Sources by status:         candidate 292 → 21,041 | verified 30 → 26 | ingested 38 → 287
+                             rejected 18 → 26 | stale 0 → 136 | watchlist 36 → 36
+  Embeddings (meta rows):    688 → 1,100 | listed without embedding: 234 → 4,917 (see EMBEDDINGS)
+  record_stats rows:         922 → 5,596 (refresh lags the drain by design; every 5 batches)
+
+GITHUB CODE SEARCH — FULL COVERAGE
+  96 windows = 3 base queries × (base + 18 path shards + 4 size shards + 7 language shards
+  + fork/archived splits); per_page=100 to the API's 1,000-result window ceiling.
+  591 API calls, 0 rate-limit events, 0 parked windows (paced ~5s, far under ~30/min).
+    filename:SKILL.md                          total_count 7,880,704*  retrieved 23,258 hits  9,403 repos
+    filename:marketplace.json                  total_count    90,880   retrieved 11,834 hits  6,741 repos
+    path:.claude-plugin filename:plugin.json   total_count    34,752   retrieved 19,624 hits  3,422 repos
+  *The SKILL.md total_count is an inflated API estimate — treat as unreliable.
+  48 of 96 windows truncated at the 1,000 ceiling. Known defect: window plugin::base hit
+  HTTP 408 on deep pages twice, retrieving 900/1,000; its shard windows (18,824 hits)
+  cover the tail substantially.
+  Unique repos across all queries/shards: 18,790 — ALL nominated into the funnel with
+  {via: github-code-search, query/shard, hitCount} provenance. Nomination run 1 crashed at
+  ~16,800 on a D1 import-lock flush; a --resume pass finished the rest (1,679 created,
+  11 corroborated, 17,100 already-landed skipped). Zero nominations lost (D1-verified).
+  COVERAGE, HONESTLY: retrieved hits are FILE matches (54,716 with duplication), and the
+  API total_counts are file counts too, so a repo-level coverage ratio is not well-defined.
+  Structurally: Code Search exposes only the best-match 1,000 per window, so the deep tail
+  (repos never ranking in any partition's top 1,000) is unreachable via this API no matter
+  the sharding. The 96 partitions maximize unique-repo yield from the reachable heads;
+  full tail enumeration would need a different index (GH Archive/BigQuery), not more calls.
+
+SKILLS.SH — FULL ENUMERATION
+  API still 401s (known). Enumerated via sitemap.xml index → 4 sub-sitemaps (skills-1,
+  skills-2, owners, misc; skills-3 404s) + the 4 public listing pages for install counts.
+  19,978 listings → 2,692 unique source repos (1,902 owners); listing pages added ~370
+  repos beyond the sitemaps; 684 repos carry install counts (installs are not in the
+  sitemap and the API is closed — listing pages are the only public source).
+  Nominated: 2,611 created, 21 corroborated, 224 external-install attachments to
+  existing records (funnel corroboration behaved exactly as designed).
+
+DRAIN (verification → ingest, funnel priority order, batch=25, D1-verified per batch)
+  v1: 11 batches, listed 872 → 1,908 (+1,036 records: skills.sh 903, npm 126,
+  github-code-search 7; 788 existing skipped, 29 dead-letter, 2 rejected).
+  BUG FOUND + FIXED: sources are keyed (kind, locator); when verification corrects a
+  provisional kind, the twin candidate row orphaned and reprocessed forever (39 duplicate
+  locators, e.g. anthropics/skills). v2 collapses by locator per batch and retires twins
+  as stale (or rejected with their keeper). First v2 batch: +149 records, 6 real rejections.
+  Post-restart run: 5+ batches, +2,266 new records, 80 twins retired, 60 dead-letter
+  (transient verify failures — sources stay verified for future passes), 10 ingest flush
+  errors (all self-healing; sources remain verified).
+  Cumulative ingested by channel (sources → records yielded): skills.sh 197 → 4,849 |
+  npm 30 → 229 | topic:claude-skills 6 → 128 | web-search 4 → 118 | github-code-search
+  6 → 44 | mcp-registry 29 → 28 | topic:claude-code-plugin 2 → 3.
+  Current rejection reasons: "git tree fetch failed (repo gone, private, or
+  rate-limited)" ×17; "no marketplace.json, SKILL.md, or plugin.json in tree" ×9.
+  Priority note: skills.sh/corroborated sources drain first (signals = priority, never
+  trust); the 18,394 github-code-search candidates are the back of the queue by design.
+  Spot-checks: better-auth/auth-skills ranks #1 on /api/search?q=better-auth (attested);
+  stas00/ml-engineering (GitHub-channel only) → live per-skill records (stas00/evaluate-cluster);
+  dnyoussef/context-cascade ingested with 27 records.
+
+EMBEDDINGS — INCOMPLETE, mechanism proven
+  +412 meta rows this run (688 → 1,100), incl. a 383-record window landed while the drain
+  was paused. Remaining: 4,917 listed unembedded at snapshot.
+  Why: (1) while the drain runs, its wrangler --file flushes keep D1 in "long-running
+  import" state → /admin/embed returns HTTP 500 D1_ERROR; (2) with the drain paused, calls
+  still timed out/hung through the sandbox proxy, consistent with the route's all-records
+  scan growing with the catalog (872 → 5,967). Lexical FTS search is unaffected; semantic
+  coverage is partial until an operator runs scripts/backfill-embed.mjs in a quiet window
+  (restart-safe, idempotent) or the route is paged (a cf/src change — outside this run's
+  collision rules).
+
+RATE LIMITS / CONTENTION / INCIDENTS
+  GitHub API: none — 0 events in 591 code-search calls.
+  D1 import-lock contention: nomination run-1 crash (recovered, zero loss), 1 drain ingest
+  error, 10 post-restart flush errors (self-healing), repeated /admin/embed 500s.
+  Sandbox incident ~03:29Z: VM restart wiped /tmp (checkpoints, dist snapshot, token file)
+  and killed processes. ZERO data loss — durable state is D1 + repo. Recovered by
+  re-snapshotting dist, regenerating the admin token via the established P5 pattern,
+  moving drain progress into talents/data/, and relaunching.
+
+REMAINING BACKLOG
+  21,041 candidates + 26 verified awaiting ingest. Reason: per-source verification needs
+  git-tree fetches via the ghapi connector + per-source D1 writes; observed throughput
+  ~25 sources / 5–13 min. Exhaustion is a multi-day sustained drain, not a single run.
+  THE DRAIN WAS STILL RUNNING AT REPORT TIME (detached, restart-safe; checkpoint = D1
+  statuses + talents/data/backfill-drain-progress.json). Resume command:
+    cd talents && python3 cf/scripts/backfill_remote.py backfill-drain.mjs --batch 25
+
+COLLISION COMPLIANCE
+  No shared files edited; no Worker deploys; no D1 migrations. New files only:
+  scripts/backfill-{lib,counts,sql,github,skillssh,nominate,drain,embed}.mjs,
+  cf/scripts/backfill_remote.py, data/backfill-drain-progress.json, this gate.
+  Scripts import a prebuilt dist snapshot so the concurrent creator build could not swap
+  modules mid-run. ADMIN_TOKEN handled per the P5 pattern (0600 tmp file, never printed
+  or filed; deleted after gating).

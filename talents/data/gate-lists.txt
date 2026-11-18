@@ -1,0 +1,135 @@
+List sources — curated lists as entry points · gate (2026-11-11)
+================================================================
+Target: production D1 (talents) · Worker version 6ce72d4d-654a-4626-aae1-6eadd036593f
+Catalog: 11,705 listed before → 11,705 listed after (lists produce
+NO records — the count is unchanged by design)
+
+Design (ARCHITECTURE-v2 §7, src/discovery/lists.ts)
+---------------------------------------------------
+A curated list repo (awesome-* style) is its own source kind
+("list", status "mined"): it is MINED for outbound links, never
+listed, never ingested (ingestSource throws on kind "list"), and
+never merely rejected when it is link-dense. Classification:
+(a) explicit nomination — operator CLI `talents discover lists
+--mine <owner/repo>`, or a scout flagging an awesome-*/best-of-*
+name (web scout) — always a CLAIM, resolved by the tree check;
+(b) the verification-time heuristic, wired into every rejection
+path (scout runner, sweep cycle, backfill drain): tree has NO
+skill files + markdown links to ≥10 distinct GitHub repos → list.
+Records win unconditionally: a repo with records, or a tree with
+skill files (checked at classification AND at every refresh), is
+never a list. Mining nominates each link into the one funnel with
+provenance {via:"list", list, section} — the section is the
+nearest preceding markdown heading, stored as a category HINT on
+the candidate, never auto-applied. Each list is its own
+corroboration channel (store.provenanceChannelKey): two lists
+naming the same repo corroborate it; the same list twice does not.
+Caps: 500 nominations per list per run; markdown bounded to
+root *.md + docs/**.md, 16 files, 256 KB each. Refresh: weekly —
+Worker discovery cron re-mines known lists on Mondays (limit 8),
+a push webhook to a known list re-mines it via the ingest queue,
+and re-mining is idempotent with removals IGNORED entirely (a
+dropped link's candidate is never unlisted or demoted — unit
+tested). Graduated lists (repo grew skill files) return to the
+normal funnel as verified sources.
+
+Seed run — the 12 sources rejected with "no marketplace.json,
+SKILL.md, or plugin.json in tree", each verified against the bar
+----------------------------------------------------------------
+list?  repo                              repo links  nominated (new / corrob. / known)
+LIST   archestack/best-of-vibe-coding            25    25 (19 / 6 / 0)
+LIST   michengai/dsh-skills-manager              12    13 (13 / 0 / 0)
+LIST   serdnaley/metabase-mcp                      18    19 (18 / 1 / 0)
+LIST   travisvn/awesome-claude-skills            20    20 ( 8 / 12 / 0)
+LIST   ui5/mcp-server                              15    17 (17 / 0 / 0)
+stay   appwrite/sdk-generator                     7    below the bar — stays rejected
+stay   cloudflare/sandbox-sdk                       1    below the bar — stays rejected
+stay   dr-titus100/titus-web                        0    below the bar — stays rejected
+stay   j-nowcow/awesome-korean-agent-skills       7    below the bar — stays rejected
+stay   mapbox/mcp-devkit-server                     6    below the bar — stays rejected
+stay   vercel-labs/next-skills                      1    below the bar — stays rejected
+stay   yawlabs/ctxlint                              3    below the bar — stays rejected
+(Nominated > repo links where npm links were also mined.)
+
+Totals: 5 lists classified · 94 nominations · 75 NEW candidates
+entered the funnel · 19 corroborations of already-known locators.
+travisvn proof case: rejected (via web-search) → kind "list",
+status "mined"; its 20 nominations include anthropics/skills and
+anthropics/claude-cookbooks (already ingested — provenance
+appended, nothing duplicated).
+
+Hand-checks — 10 nominations verified independently
+---------------------------------------------------
+For each: the locator resolves to a real repo on GitHub, and the
+stored section equals the heading found by an independent upward
+line scan of the list's live README (not the extractor's output).
+  anthropics/skills                 § Document Skills            ✓ exists ✓ section
+  anthropics/claude-cookbooks       § Repositories & Examples    ✓ exists ✓ section
+  trailofbits/skills                § Individual Skills          ✓ exists ✓ section
+  lackeyjb/playwright-skill         § Individual Skills          ✓ exists ✓ section
+  conorluddy/ios-simulator-skill    § Individual Skills          ✓ exists ✓ section
+  zarazhangrui/frontend-slides      § Individual Skills          ✓ exists ✓ section
+  chrisvoncsefalvay/claude-d3js-skill § Individual Skills        ✓ exists ✓ section
+  alonw0/web-asset-generator       § Individual Skills          ✓ exists ✓ section
+  obra/superpowers-skills           § Collections & Libraries    ✓ exists ✓ section
+  obra/superpowers-lab              § Collections & Libraries    ✓ exists ✓ section
+10/10 exist, 10/10 sections match.
+
+Hard-rule proofs
+----------------
+· Records sourced from any classified list repo: 0.
+· All 5 list rows: status "mined", recordCount 0 — none sits in
+  candidate/verified (the drain cannot pick them up), and
+  ingestSource hard-throws on kind "list" (unit tested).
+· Live aggregate (talents.sh/.claude-plugin/marketplace.json):
+  no entry sourced from any list repo.
+· No skill page for a list: GET talents.sh/skills/travisvn/
+  awesome-claude-skills → 404.
+· Corroboration on ONE row: chromedevtools/chrome-devtools-mcp
+  carries channels [npm, skills.sh, list] — the list entry from
+  archestack/best-of-vibe-coding § "🔌 MCP servers for developers".
+· List inclusion verifies nothing: all 75 new candidates sit in
+  status "candidate" and face the normal verify → ingest → attest
+  path via the drain.
+
+Backlog + drain
+---------------
+Candidate+verified backlog: 20,713 before → 20,788 after (+75 net:
+the new mined candidates; the 5 converted list rows and rescued
+rejections leave the backlog). Drain: not disturbed by this work —
+its progress file stood at 23 batches / 7,976 records (last
+checkpoint ~2.2 h before the gate read; the hourly watchdog owns
+relaunching it, and the drain code + dist snapshot now carry the
+list heuristic, so list-shaped backlog candidates — e.g. the
+awesome-* repos still queued as candidates — will be mined rather
+than rejected when it reaches them).
+
+Tests
+-----
+Root suite: 210 tests — 209 pass, 1 pre-existing skip, 0 fail.
+New: test/lists.test.ts (18) — URL normalization edge cases
+(anchors, /tree//blob/ suffixes, .git, trailing punctuation),
+self/site-page/profile/reserved-owner exclusion, marketplace.json
+classification + kind upgrade, scoped npm names, section
+attribution (incl. cleaning + before-first-heading), the bar
+(distinct repos only; npm never counts), markdown file selection,
+per-list corroboration channels, classification end-to-end
+(records-win, tree-win, below-bar), mining writes NO records,
+refresh removal-ignored, refresh graduation, the never-ingest
+guard, mining idempotence, runner claim resolution + claim
+discard + rejection rescue.
+
+Files changed
+-------------
+src/discovery/lists.ts (new), src/discovery/store.ts (status
+"mined", ProvenanceEntry.list/section, per-list channel key,
+deleteSource), src/discovery/sweep.ts (kind "list", exported
+fetchTreePaths), src/discovery/pipeline.ts (never-ingest guard,
+cycle rejection rescue + stats), src/discovery/scouts/runner.ts
+(claim resolution, rejection rescue, stats), src/discovery/
+scouts/web.ts (list-name claims), src/cli.ts (`discover lists`),
+cf/src/discovery.ts (Monday list refresh, queue-consumer list
+re-mine), scripts/backfill-drain.mjs (list routing, defensively
+wrapped), scripts/gate-lists.mjs (new), cf/scripts/deploy_lists.py
+(new), test/lists.test.ts (new), README.md, ARCHITECTURE-v2.md.
+No migration: kind/status are TEXT columns.

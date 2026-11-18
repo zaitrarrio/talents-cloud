@@ -1,0 +1,84 @@
+PASS live: /sign-in renders Clerk sign-in (no Setup remaining) — status 200
+PASS live: Clerk instance is in test mode — test_mode=true
+PASS live: GitHub social connection state recorded — enabled social providers: oauth_google
+PASS live: test user exists in the Clerk app — created=false
+PASS live: sign-in token minted for the test user — status 200
+PASS live: ticket exchange completes a sign-in — status 200 sign_in_status=complete
+PASS live: session JWT obtained — status 200
+PASS live: /dashboard renders for the signed-in test user — status 200
+PASS live: /api/claims runs for the session, refuses without a GitHub login — status 403 body={"error":"namespace \"talents-gate\" has no listings in the catalog yet"}
+PASS live: unauthenticated /dashboard → /sign-in — status 303
+PASS live: unauthenticated POST /api/claims → 401 — status 401
+PASS live: unauthenticated listing edit stays auth-gated — status 303
+
+GATE CREATOR-AUTH (live): PASS (12/12 checks)
+
+== what changed ==
+- cf/src/auth.ts: verifySessionToken primary = @clerk/backend verifyToken
+  (3.27.0) with { jwtKey | secretKey, issuer }; hand-rolled PEM/JWKS
+  verifier kept as fallback. opts.clerkApiUrl is a test-only seam.
+- cf/package.json + package.json: @clerk/backend@3.27.0 (cf dep for the
+  Worker bundle; root devDependency so node --test resolves it from dist/).
+- cf/wrangler.deploy.jsonc + cf/wrangler.jsonc: CLERK_PUBLISHABLE_KEY as
+  [vars] (TEST key; public by design). CLERK_SECRET_KEY set as a Worker
+  secret via stdin (cf/scripts/set_clerk_secret.py), verified in the
+  secret list. No CLERK_JWT_KEY provided — not needed (secret-key path).
+- cf/src/creator.ts: catalogOwners rewritten from 1+N D1 queries to a
+  single (owner, source_repo) scan (see incident note below).
+- scripts/gate-creator-auth.mjs: live gate driver (node fetch — Python
+  urllib dies on this sandbox egress proxy, and both hosts 403 its UA).
+- cf/scripts/deploy_creator_auth.py: deploy script.
+- Worker deployed: e1e23350-3f32-43e5-b336-d3c2b9e39de4.
+
+== tests ==
+Suite 255 tests, 254 pass, 0 fail, 1 pre-existing env-gated skip.
+New: 5 auth-swap tests (primary via mock BAPI at /v1/jwks with Bearer
+secret key asserted; fallback on BAPI failure; invalid/expired refused
+on both paths; no material -> null; clerkConfigured) + 1 catalogOwners
+single-query test.
+
+== extra live probe (after the gate) ==
+PASS live: POST /api/claims {owner:'anthropics'} with the real session
+  -> 403 "your account has no GitHub login linked — sign in with GitHub
+  to claim a namespace" (the decideClaim no-github-login path, live
+  through the new verifyToken path).
+Test user talents-gate-test@example.com deleted via the Backend API (200).
+
+== remaining user steps ==
+1. Enable the GitHub social connection in the Clerk dashboard (User &
+   Authentication -> Social Connections -> GitHub). Only Google is
+   enabled today, so no creator can sign in with GitHub or claim a
+   namespace until this is done. No workaround was applied.
+2. Swap in LIVE keys (pk_live_... / sk_live_...) for production
+   sign-ins. The deployed keys are TEST keys; test-mode sessions work,
+   production users cannot sign in with them.
+3. Optional: provide CLERK_JWT_KEY (instance JWT public key PEM) for
+   networkless verification; the secret-key path already works.
+
+== SEPARATE PRODUCTION INCIDENT (not caused by this swap) ==
+Home / and /api/trending return 500; /api/search returns 200 with
+vectorError "D1 query result exceeded the maximum response size limit
+of 50 MB" and falls back to keyword-only. /search page itself is 200.
+Mechanism: allRecords() (cf/src/db.ts) runs SELECT record_json FROM
+records WHERE status='listed' — a full-table load. Production D1 now
+holds 22,407 listed records totaling 50,865,333 bytes of record_json,
+just over D1's 50 MB single-query response limit. trendingRecords()
+calls allRecords() OUTSIDE its try/catch, so home and /api/trending
+throw. The search vector block and the post-rank fallback hit the
+same call. Home was 200 this morning at 16,096 records; the queue
+slice + sandbox drain pushed the catalog past the threshold during
+the day. My deploy touched auth + vars only and predates the
+crossing in code terms — the failure is data-scale, not the swap.
+FIXED IN THIS TASK (it blocked the dashboard verification):
+catalogOwners issued 1 + owner-count sequential D1 calls per
+dashboard/claim request (1,075 at 22,407 records) — past the Workers
+1,000-subrequest-per-request ceiling, so /dashboard 500'd for every
+signed-in user. Rewritten to a single (owner, source_repo) scan
+(~1 MB), identical map, covered by a regression test.
+NOT FIXED: allRecords callers — trendingRecords (home, /api/trending),
+hybridSearch post-rank fallback, suggestForSkill. Fix shape: fetch
+only needed records by id for trending (trending ids + a bounded
+recent sample for the static fallback), bound the search fallback,
+page suggestForSkill. Needs its own build + gate.
+
+GATE CREATOR-AUTH: PASS (live 12/12 + extra claim probe)

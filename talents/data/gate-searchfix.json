@@ -1,0 +1,137 @@
+{
+  "gate": "search-fix + catalog growth (user report: \"build games\" returns useless results)",
+  "verifiedAt": "2026-11-10T20:55:43.161Z",
+  "workerVersions": [
+    "ffd9d07c-dd21-4177-a24f-92a9b04599bf (seeded deploy: 557 records + search fix)",
+    "ae17f3fb-f906-44b9-86dd-4b124fc9ee51 (code-only follow-up: bm25 candidate-order weights name/desc only; remote D1 NOT re-seeded, to avoid wiping discovery-ingested records)"
+  ],
+  "rootCausesVerifiedLiveBeforeFix": {
+    "gamesQuery": "0 results",
+    "gameQuery": "5 loose trigram matches",
+    "buildGamesTop3": [
+      "anthropics/mcp-builder",
+      "anthropics/web-artifacts-builder",
+      "anthropics/frontend-design"
+    ]
+  },
+  "ingest": {
+    "anthropics/claude-plugins-official (full; P0 gate used limit 25)": {
+      "seen": 317,
+      "ok": 310,
+      "deadLetter": 7,
+      "deadReasons": "missing plugin.json x6 (atomic-agents, ui-theme-designer, ui5, ui5-modernization, ui5-typescript-conversion, zilliz), plugin.json has no description x1 (mintlify)",
+      "method": "persisted slices 80/170/260/full into data/registry.json"
+    },
+    "garrytan/gstack (repo scan full; previously limit 3)": {
+      "seen": 71,
+      "ok": 70,
+      "deadLetter": 1,
+      "deadReasons": "duplicate skill name in repo (second SKILL.md also resolves to \"gstack\")"
+    },
+    "Donchitos/Claude-Code-Game-Studios (repo scan, NEW, tree-verified: 78 SKILL.md)": {
+      "seen": 78,
+      "ok": 78,
+      "deadLetter": 0
+    },
+    "gamedev-skills/awesome-gamedev-agent-skills (repo scan, NEW, tree-verified: 78 SKILL.md)": {
+      "seen": 78,
+      "ok": 78,
+      "deadLetter": 0
+    },
+    "brockmartin/roblox-game-skill (repo scan, NEW, tree-verified: 1 root SKILL.md)": {
+      "seen": 1,
+      "ok": 1,
+      "deadLetter": 0
+    }
+  },
+  "rateLimits": "No GitHub rate-limit incidents. Core API was at 59/60 remaining before the runs; ingest traffic is overwhelmingly raw.githubusercontent.com fetches plus one git-trees call per scanned repo.",
+  "catalog": {
+    "recordsBefore": 49,
+    "recordsAfterSeededGrowth": 557,
+    "gameSourceRecords": {
+      "total": 157,
+      "donchitos": 78,
+      "gamedevSkills": 78,
+      "brockmartin": 1
+    },
+    "aggregateAfterGrowth": {
+      "entries": 555,
+      "skippedDuplicates": [
+        "donchitos/code-review",
+        "garrytan/design-review"
+      ],
+      "originViolations": 0,
+      "validatorErrors": 0
+    },
+    "liveCatalogDrift": "The P5 discovery pipeline is autonomously sweeping: live aggregate entries were 555 at seed time, 588 ~20 min later, 605 at final verification. Live counts in this file are timestamped snapshots, not invariants."
+  },
+  "liveGate": {
+    "pdf": {
+      "first": "anthropics/pdf",
+      "pass": true
+    },
+    "document": {
+      "first": "anthropics/document-skills",
+      "pass": true
+    },
+    "pdff": {
+      "first": "anthropics/pdf",
+      "pass": true,
+      "note": "typo broadening intact, partial=false"
+    },
+    "pdfKindSkill": {
+      "first": "anthropics/pdf",
+      "allKindsSkill": true,
+      "pass": true
+    },
+    "security": {
+      "atSeededDeploy": {
+        "first": "42crunch-ai/42crunch-api-security-testing",
+        "pass": true
+      },
+      "atFinalVerification": {
+        "first": "code-yeongyu/security-research",
+        "second": "42crunch-ai/42crunch-api-security-testing",
+        "pass": false
+      },
+      "explanation": "Between the two checks the autonomous discovery sweep ingested code-yeongyu/security-research. It TIES 42crunch on every engineered key (tokens matched, rarity, name relevance 40, whole-word 3, description aboutness 3-at-cap) and edges it on name+description bm25 (-5.81 vs -5.67, measured in remote D1): its name leads with the query term and its description is more security-dense (6 standalone occurrences vs 3). The pre-fix engine (bm25 + P1 rerank tie) ranks it first as well, so the flip is catalog growth, not the fix. No honest relevance key separates them in 42crunch's favour; no boost was faked. Reported as a divergence for the parent/user to judge."
+    },
+    "buildGames": {
+      "top5": [
+        "gamedev-skills/ebitengine-game",
+        "gamedev-skills/game-jam",
+        "gamedev-skills/game-ui-ux",
+        "gamedev-skills/card-game",
+        "gamedev-skills/defold-core"
+      ],
+      "partial": false,
+      "pass": true,
+      "passCondition": "condition 1 — game-relevant records occupy the top results (partial note not needed: the game token genuinely matches now)"
+    },
+    "gamesVsGame": {
+      "setEqual": true,
+      "setSize": 171,
+      "pass": true
+    },
+    "partialHonesty": {
+      "apiExample": {
+        "q": "build zzzquest",
+        "partial": true,
+        "missingTokens": [
+          "zzzquest"
+        ],
+        "note": "No skills match 'zzzquest' yet — showing closest matches for the rest of your search"
+      },
+      "pageRendersNote": true,
+      "pass": true
+    }
+  },
+  "localRealD1": "Full battery also run against wrangler dev + local D1 seeded with the 557 records before deploying: all queries above behaved identically (build games top 6 all game skills).",
+  "tests": {
+    "rootSuite": "73 total — 72 pass, 1 skip (env-gated Typesense live test), 0 fail",
+    "newTests": "test/searchfix.test.ts x8 (normalization units, fixture + real-catalog set equivalence, rare-token dominance, partial flag/note, zero-match honesty, pdff regression)",
+    "p0Gate": "unchanged — anthropics/skills 5/5/0, official --limit 25 → 24 ok / 1 dead",
+    "aggregateTestNote": "p2 aggregate assertion updated to entryCount + skipped == listed (duplicate plugin names exist at this catalog size; builder skip-and-report behaviour unchanged)",
+    "flakeNote": "One transient failure of discovery.test.ts dedup observed in a single parallel full-suite run; passed in isolation and in both subsequent full runs."
+  }
+}

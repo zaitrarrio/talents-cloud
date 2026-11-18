@@ -1,0 +1,67 @@
+== seed local D1 (migrations incl. 0005 + seed records) ==
+== reset creator fixture state (local D1 only) ==
+== boot A (auth stub + fixture webhook secret) ==
+PASS  boot A answers
+PASS  dashboard offers the one-click claim for the matching namespace
+PASS  POST /api/claims (login match) → claimed — {"claimed":"anthropics","method":"github-login-match","claimedAt":"2026-11-11T02:01:47.826Z"}
+PASS  POST /api/claims (login mismatch) → 403 — status 403
+PASS  dashboard shows Verified publisher + honest payouts state
+PASS  public profile shows the Verified publisher badge
+PASS  listing edit saves (303 to saved view) — status 303
+PASS  skill page labels the Publisher description
+PASS  priced page (owner view) shows price + split note — the anonymous disabled-Buy state is asserted in boot B
+PASS  /api/search merges the publisher description + price — {"id":"anthropics/pdf","url":"https://talents.sh/skills/anthropics/pdf","kind":"skill","description":"Gate publisher description for PDF.","publisherDescription":true,"priceCents":1250,"currency":"usd","declaration":"Runs 1 skill(s) in your agent, following their SKILL.md instructions","attested":true}
+PASS  unlist action saves — status 303
+PASS  unlisted skill page → 404 — status 404
+PASS  unlisted skill absent from /api/search
+PASS  unlisted skill excluded from the aggregate (count drops by 1) — 1093 → 1092
+PASS  relist restores page + aggregate
+PASS  listing manager lists the namespace with price state
+PASS  analytics page renders (zeros are honest)
+PASS  signed checkout webhook → fulfilled — {"received":true,"fulfilled":"fulfilled"}
+PASS  same webhook redelivered → idempotent (already) — {"received":true,"fulfilled":"already"}
+PASS  bad signature → 401 — status 401
+PASS  success page shows the one-time install token
+PASS  token pickup is one-time (second visit: already shown)
+PASS  gateway prepare (priced, no token) → payment_required, no hash leaked — {"status":"payment_required","skill":"anthropics/pdf","price":{"amountCents":1250,"currency":"usd"},"checkoutUrl":"https://talents.sh/skills/anthropics/pdf","notice":"This listing is priced. Buy it on
+PASS  gateway prepare (priced, valid token) → prepared
+PASS  gateway confirm (token + hash ceremony) → installed — {"status":"installed","skill":"anthropics/pdf","installId":"463eb3fb-f728-4222-bf4f-16394360ec90","pinnedRef":"main","attestationHash":"52dbe5542e451e33c47d6e82647522ec8819ec17bbd359a6357548e9b4cdcf1e
+PASS  spent token no longer unlocks prepare
+PASS  free skill prepare unchanged
+PASS  free skill confirm unchanged → installed — {"status":"installed","skill":"anthropics/docx","installId":"ee3dd91c-d096-40f4-af8d-18e60f918fc5","pinnedRef":"main","attestationHash":"e785c8cfb0efc4f92abe3c5
+== boot B (no auth stub, no Clerk keys) ==
+PASS  boot B answers
+PASS  unauthenticated /dashboard → redirect to /sign-in — status 303 location /sign-in
+PASS  unauthenticated POST /api/claims → 401 — status 401
+PASS  /sign-in renders the honest awaiting-Clerk-keys state
+PASS  public skill page unaffected by auth state — status 200
+PASS  priced page (anonymous, no Stripe keys) shows price + honest disabled Buy
+PASS  stripe webhook unconfigured → 503 (never unverified-accept) — status 503
+== teardown: reset creator fixture state again (local D1 only) ==
+
+GATE CREATOR (local): PASS
+
+== live (https://talents.sh) ==
+PASS  live: home → 200 — status 200
+PASS  live: "build games" top hit is a game skill — gamedev-skills/ebitengine-game
+PASS  live: scout record still searchable (usefulapi/localazy first) — usefulapi/localazy
+PASS  live: registry-label profile shows the honest claim note
+PASS  live: advisor still answers (pdf goal → anthropics/pdf match) — status 200
+PASS  live: MCP gateway handshake on mcp.talents.sh
+PASS  live: MCP search_skill returns anthropics/pdf
+PASS  live: /dashboard unauthenticated → 303 /sign-in — status 303
+PASS  live: /sign-in renders the awaiting-Clerk-keys setup state
+PASS  live: POST /api/claims unauthenticated → 401 — status 401
+PASS  live: POST /webhooks/stripe unconfigured → 503 — status 503
+PASS  live: POST /api/checkout on a free listing → 400 (no fake checkout) — status 400
+== fixture cycle: talents-gate/fixture-skill (created for this gate, removed after) ==
+PASS  live: fixture record is live (page 200) — status 200
+PASS  live: fixture record is searchable
+PASS  live: fixture record is in the aggregate — aggregate entries ≈ 1099+
+PASS  live: unlisted fixture page → 404 — status 404
+PASS  live: unlisted fixture absent from search
+PASS  live: unlisted fixture excluded from aggregate
+PASS  live: restore verified: fixture record gone (page 404) — status 404
+aggregate count after restore: 1099 (baseline drift from the parallel backfill is expected; the fixture itself is gone)
+
+GATE CREATOR (local + live): PASS

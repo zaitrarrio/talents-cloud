@@ -1,0 +1,92 @@
+{
+  "target": "anthropics/claude-plugins-official",
+  "marketplaceName": "claude-plugins-official",
+  "fetchedAt": "2026-11-10T20:35:23.626Z",
+  "total": 80,
+  "ok": 79,
+  "deadLetter": 1,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "42crunch-ai/42crunch-api-security-testing",
+      "url": "https://talents.sh/skills/42crunch-ai/42crunch-api-security-testing",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "faf5305385de8afed9468904e8639be737aff39e",
+      "filesHashed": [
+        "plugins/api-security-testing/.claude-plugin/plugin.json"
+      ],
+      "declarationSummary": [
+        "No derived permissions — see undeclared items"
+      ],
+      "attestationHash": "7f5b3fdeeae30d1c30c71b694bc0421d9c1f3b18a3b31303d79f499f95ce2152"
+    },
+    {
+      "id": "adobe/adobe-for-creativity",
+      "url": "https://talents.sh/skills/adobe/adobe-for-creativity",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "0f487c9b1b98d8e62dfc80ee4d28b29f5471261f",
+      "filesHashed": [
+        "plugins/creative-cloud/adobe-for-creativity/.claude-plugin/plugin.json"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "5ffceb2153d74bb74a821121155bb804919603aa31046ed6bc599a905e7db699"
+    },
+    {
+      "id": "anthropics/agent-sdk-dev",
+      "url": "https://talents.sh/skills/anthropics/agent-sdk-dev",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "plugins/agent-sdk-dev/.claude-plugin/plugin.json"
+      ],
+      "declarationSummary": [
+        "No derived permissions — see undeclared items"
+      ],
+      "attestationHash": "a4e61b5e5870e047d0b5aca236931ad8a4ecf5403d982f54c5d284bfe165a86f"
+    },
+    {
+      "id": "salesforceairesearch/agentforce-adlc",
+      "url": "https://talents.sh/skills/salesforceairesearch/agentforce-adlc",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "09bf1539d41f9ff355ba3eb5d05d4a75813423bb",
+      "filesHashed": [
+        ".claude-plugin/plugin.json"
+      ],
+      "declarationSummary": [
+        "No derived permissions — see undeclared items"
+      ],
+      "attestationHash": "f8edaac86638e449f173f142604075c7faf696b78944dd2601ec86f5b6fe8117"
+    },
+    {
+      "id": "endorlabs/ai-plugins",
+      "url": "https://talents.sh/skills/endorlabs/ai-plugins",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "2de00883bd2be8b8578b46ab09baf2c8731376de",
+      "filesHashed": [
+        ".claude-plugin/plugin.json"
+      ],
+      "declarationSummary": [
+        "No derived permissions — see undeclared items"
+      ],
+      "attestationHash": "a4aa0447fece28f6bb92e90ce5ab1fffa6b204c2c50f1707bdcd6cefcf984012"
+    }
+  ],
+  "deadLetters": [
+    {
+      "entryName": "atomic-agents",
+      "reason": "plugin.json not found at .claude-plugin/plugin.json in brainblend-ai/atomic-agents@33d2ec94f42d4a65393a336e35edf21ee5700303"
+    }
+  ]
+}

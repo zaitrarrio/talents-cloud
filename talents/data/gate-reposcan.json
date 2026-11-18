@@ -1,0 +1,92 @@
+{
+  "target": "anthropics/skills",
+  "marketplaceName": null,
+  "fetchedAt": "2026-11-10T13:44:11.196Z",
+  "total": 20,
+  "ok": 20,
+  "deadLetter": 0,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "anthropics/academy-guide",
+      "url": "https://talents.sh/skills/anthropics/academy-guide",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/academy-guide/SKILL.md",
+        "skills/academy-guide/LICENSE.txt"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "f278412a929a83f1abb70800b238be34c507341a57a9bffddd97b151966ff5c2"
+    },
+    {
+      "id": "anthropics/algorithmic-art",
+      "url": "https://talents.sh/skills/anthropics/algorithmic-art",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/algorithmic-art/SKILL.md",
+        "skills/algorithmic-art/LICENSE.txt"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "61a7ee08d87aa43e8d99a9c2a34e80a995c27e4c373e8f4105fdd9b4e73b7f95"
+    },
+    {
+      "id": "anthropics/brand-guidelines",
+      "url": "https://talents.sh/skills/anthropics/brand-guidelines",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/brand-guidelines/SKILL.md",
+        "skills/brand-guidelines/LICENSE.txt"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "7a13b035849ebdbc8eb5244551c5961d6bdc244a6d8c8dbec45bd4abdcf8ced1"
+    },
+    {
+      "id": "anthropics/canvas-design",
+      "url": "https://talents.sh/skills/anthropics/canvas-design",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/canvas-design/SKILL.md",
+        "skills/canvas-design/LICENSE.txt"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "ac69d7fba6b74764f8fe85e773b36bf7da32c2e7e5d9cf7dcf3923e2953e8f25"
+    },
+    {
+      "id": "anthropics/claude-api",
+      "url": "https://talents.sh/skills/anthropics/claude-api",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/claude-api/SKILL.md",
+        "skills/claude-api/LICENSE.txt"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "0f48914090998d2166b7056381c69a3bb0459f2ef39c7479044859f29559822b"
+    }
+  ],
+  "deadLetters": []
+}

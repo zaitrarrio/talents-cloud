@@ -1,0 +1,105 @@
+GATE — Enrichment Tranche 1 (layers A–C) — 2026-11-11
+========================================================
+Verdict: PASS (22/22 independent checks; machine record: data/gate-enrich1.json)
+Worker: 56fff3f3 (chunking fix; first tranche deploy was 248e6ced)
+Migration: 0006_enrichment.sql applied to production D1 `talents`.
+R2 bucket: talents-assets (provisioned this tranche), bound as ASSETS.
+
+SLICE (as specified): ALL remote-MCP records (Layer C candidates)
++ top 500 records by traffic (record_stats behavior score →
+calls_30d → id) for A/B. At gate time the slice = 546 unique
+records (51 remote-MCP + 500 traffic, 5 in both).
+
+RUNS (operator script, ghapi-authenticated; all 0 failures):
+- remote-mcp: 51/51 considered, 46 enriched, 5 fresh-skips.
+- traffic: 5 shards × 100 = 500/500 considered. The first fleet
+  was SIGTERM'd by the sandbox's ~60-min background cap at ~60%
+  and resumed idempotently to completion (D1-checkpointed).
+- Re-embed afterwards: 1,501 records embedded via paged
+  /admin/embed (2 sweeps, 0 retries) — enriched records whose
+  search text gained extras, plus drain newcomers.
+
+COVERAGE over the gate-time slice (546 records; 541 have rows):
+- Layer A (source):  done 483 · partial 30 · none 28
+  none = MCP-registry records with no GitHub/npm source.
+  partials: GitHub sub-resource fetch failures (30).
+- Layer B (derived): done 536 · partial 5 (tree fetch, 4).
+- Layer C (derived): done 2 · partial 2 · none 537
+  Of the 49 enriched remote-MCP candidates: done 2, partial 2,
+  none 45 — reasons: unreachable / not an MCP endpoint 44,
+  requires auth 1. (The other 492 nones are traffic records
+  with no remote endpoint — correct verdicts.) The registry's
+  remote endpoints are mostly dead; the machinery is proven by
+  the fixture tests and the bellman cross-check below.
+- Slice delta: 5 slice records have no row. All runs covered
+  100% of their run-time selections with 0 failures; the delta
+  is top-500 churn (stats refreshes + the still-running
+  backfill drain listing records) between selection and gate.
+- Full catalog: 9,384 listed at gate time (7,919 at tranche
+  start — the drain kept listing); 541 enrichment rows =
+  5.8% of the catalog. The slice was deliberately bounded;
+  coverage grows by re-running the driver in traffic order.
+- "---" description artifact: 2 listed records currently carry
+  the literal "---" description; neither was in the slice, so
+  0 parsedDescription candidates were recorded this run. The
+  B-layer capture machinery is unit-tested and armed for the
+  ingest fix.
+
+HAND-CHECKS (10 sampled verifications, all independent):
+- Stars vs live GitHub (ghapi re-fetch), 6 DISTINCT repos:
+  0xsline/openchatcut 3051 stored vs 3053 live (drift +2 —
+  the repo gained 2 stars between fetch and gate; tolerance
+  ±max(10, 1%)), the other five exact (23, 2, 7, 1, 0).
+- README excerpt fidelity ×2: stored excerpt is a normalized
+  substring of the freshly fetched README.
+- Sub-inventory ×1: 19pine-ai/pine's contained skill "pine"
+  present at its stored path in the live repo tree.
+- Introspection ×1: bellman/bellman — the stored tool list
+  (16 tools) matches an independent manual MCP client session
+  written for this gate (no shared code with the probe).
+
+R2: 977 objects (icons + READMEs for the slice). Sample icon
+https://talents.sh/assets/icon/0xsline/ai-cinematic-short-film
+→ 200 image/png; sample README asset → 200.
+
+SEARCH SPOT-CHECKS: q="bellman_start" (an introspected tool
+name) finds parent bellman/bellman; q="pine" (a sub-inventory
+name) finds parent 19pine-ai/pine.
+
+DISPLAY (verified live): anthropics/pdf renders "From the
+README", "Inside this package (derived…)", and "Source facts …
+as of 2026-11-11 — not a rating"; bellman/bellman renders
+"Tools (live, introspected …)" inside its Declaration panel.
+
+SMOKE: home 200 · "build games" top hit akillness/game-build-
+log-triage (a game skill) · /advisor PDF goal 200 (first match
+github/convert-pdf-to-md) · MCP initialize on mcp.talents.sh
+200 · /dashboard 303 → /sign-in · POST /admin/enrich contract
+verified live (paged stats + nextCursor; 401 on a bad token).
+
+TESTS: root suite 145 (144 pass + 1 pre-existing env-gated
+skip, 0 fail), incl. 15 enrichment tests: parsers, MCP probe vs
+in-test fixture server (JSON + SSE + 401; asserts no tools/call
+is ever sent), state machine over node:sqlite running the real
+migration SQL, traffic keyset paging, extrasForIds chunking.
+One non-reproducing single failure was seen in the first full
+run after the tranche landed; 5 subsequent full runs were
+clean, and the final suite state above is from a clean run.
+
+BUGS FOUND + FIXED DURING THE GATE:
+- extrasForIds bound one SQL variable per record id; D1's
+  ~100-variable cap made /admin/embed pages of 200 fail with
+  "too many SQL variables". Chunked at 50 ids; regression test
+  added; redeployed (56fff3f3) and the embed re-ran clean.
+- (Driver only) the first operator-script rewrite used wrong
+  API shapes from memory and failed fast with 0 records
+  written; rewritten against the source and smoke-tested on
+  5 records before the fleet relaunched.
+
+REMAINING FOR TRANCHE 2: Layer D (generated editorial —
+Anthropic summaries/tags/use-cases, always labelled
+"Generated"; schema columns exist), Layer E (trust flags:
+risky-pattern scan, source-drift status), completeness-score
+surfacing, and the weekly A/C refresh cadence wiring (the
+/admin/enrich route + driver support it; no cron added this
+tranche).

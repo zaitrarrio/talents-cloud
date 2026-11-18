@@ -1,0 +1,139 @@
+GATE — Enrichment Tranche 2 (layers D + E, completeness, weekly refresh) — 2026-11-11
+======================================================================================
+Verdict: PASS (machine record: data/gate-enrich2.json)
+Worker live version: 83df5db0 (secret-put on top of final code deploy 30321bfc).
+Migrations: none — 0006 already carried d_state/e_state/d_json/e_json.
+Cron: deployed set is now ["23 4 * * *", "41 5 * * 1"] — verified via the
+Cloudflare API schedules endpoint (new cron created_on 2026-11-11T08:21:13Z);
+TALENTS_ENRICH_MODEL=claude-haiku-5-5 verified in Worker settings via the API.
+
+SLICE (as specified): the SAME slice as Tranche 1 — operationalized exactly as
+every listed record holding an enrichment row: 541 records (tranche 1 targeted
+546 = 51 remote-MCP + top-500 traffic with 5 overlap; 541 rows existed at its
+gate and the same 541 at this gate).
+
+LAYER D — GENERATED EDITORIAL (Anthropic, inside the Worker only)
+- Route: POST /admin/enrich gained {layers:["d"]} and an {ids:[…]} mode; the
+  generator is injected only by the Worker (ANTHROPIC_API_KEY secret); model
+  env TALENTS_ENRICH_MODEL (default the advisor's claude-haiku-5-5). The
+  operator script has no generator — the pipeline skips D there by design.
+- COVERAGE over the slice (541): done 510 · withheld (none) 31 · partial 0.
+  Withholding: ALL 31 are the material rule — "insufficient source material"
+  (no README AND effective description < 120 chars AND no sub-inventory);
+  stored "---" descriptions count as no description.
+- COST (REAL, from per-record usage stored in d_json):
+  Final stored payloads: 510 records · 2,862,645 input tokens · 425,431
+  output tokens. At claude-haiku-5-5 list prices ($1.00/M in, $5.00/M out):
+  $4.99 total → $9.78 per 1k generated records.
+  All-rounds total (incl. discarded partial chains replaced across the 4
+  generation rounds): ≈ $6.20 → ≈ $11.46 per 1k slice records. Method:
+  the post-round-2 stored snapshot (3,064,030 in / 453,256 out = $5.33)
+  captured rounds 1–2 in full; add the round-3 partial chains replaced in
+  round 4 (~$0.74) and first-attempt chains of records first generated in
+  rounds 3–4 (~$0.12). Within one invocation, failed + repair attempts are
+  summed into the record's stored usage by construction.
+- GENERATION ROUNDS (parser/prompt hardening, all reported):
+  R1: done ~164, 51 partial — replies arrived backslash-escaped
+      ({\"oneLine\": …}).
+  R2 (+ prose-span extraction, JSON-string unwrap, unescape fallback,
+      maxOutputTokens 700→900): done 452, partial 58.
+  R3 (+ control-char sanitizer inside strings, taxonomy normalization —
+      unknown categories dropped when ≥1 valid remains — oneLine cap
+      160→180): done 474, partial 36; EVERY remaining failure was reply
+      truncation (output exactly 1800 = 2 attempts × 900 cap, on
+      inventory-heavy records with ~11.5k-token prompts).
+  R4 (+ maxOutputTokens 1600, prompt brevity): done 510, partial 0.
+- First-category distribution (510): media 124, development 110, agents 71,
+  business 53, design 45, data 21, games 18, communication 17, finance 10,
+  devops 9, documents 9, testing 7, security 6, productivity 5, science 2,
+  other 2, education 1, health 0.
+
+FAITHFULNESS QA — 10 summaries hand-checked against their sources
+(101-skills/agent-ui, 101-skills/data-visualization, 101-skills/linkedin-content,
+0xsline/ai-cinematic-short-film, 0xsline/known-errors,
+42crunch-ai/42crunch-api-security-testing, aahl/crypto-report,
+akillness/agentic-gamedev-skills, akillness/ai-knowledge-management-platform,
+akillness/bmad-idea):
+UNSUPPORTED CLAIMS: 0.
+Every claim traced to the record's own artefacts. Two checks required the
+FULL stored README (the model sees up to 12k chars; the a_json excerpt is
+~450): 42crunch's "0–100 score", "consent before applying fixes" and
+"Postman/Insomnia → openapi.json" claims, and aahl/crypto-report's
+"curl and jq required" claim (a README requirement badge) — all verified
+verbatim in the R2 README text. Notable honesty signals: one summary
+(0xsline/ai-cinematic-short-film) explicitly notes its README describes a
+different product than the skill; two others hedge where artefacts are thin.
+No prompt tightening or regeneration round was needed for faithfulness.
+
+LAYER E — TRUST SIGNALS (operator run, ghapi-authenticated)
+- COVERAGE: done 495 · none 46 · partial 0. All 46 nones: "no scannable
+  source text (no SKILL.md / scripts / server.json)" — a verdict, recorded.
+- FLAGS: 29 total across 21 records (3.9% of slice):
+  remote-code-execution 20 · persistence 9 · credential-access 0 ·
+  obfuscation 0 · network-exfil 0.
+- DRIFT: current 8 · changed 24 · unknown 509. Unknown is honest: drift is
+  only determinable when the pinned ref is a commit SHA (32 records); the
+  rest pin branch names. The 24 "changed" records are the re-verify list.
+- SPOT-CHECKS (flagged): 101-skills/building-inferencesh-apps — verified
+  verbatim, SKILL.md:24 `curl -fsSL https://cli.inference.sh | sh`.
+  akillness/agent-manager — verified verbatim (lines 43/163/181/225);
+  writing to the system crontab is the skill's stated function.
+  akillness/aidlc-workflows — pattern present verbatim (line 72);
+  BORDERLINE: the line discusses the pattern comparatively while
+  recommending download-then-run — the documented precision trade-off of
+  the inline-code rule; the flag's factual core holds.
+- SPOT-CHECKS (unflagged): alphaprime/alphaprime-stocks, api/apish,
+  askhook/askhook — their scanned server.json descriptors contain none of
+  the v1 pattern substrings. 3/3 clean.
+- INCIDENT (reported, repaired): the first E pass ran concurrently with
+  the D run; 10 records' E writes were lost to a race between the operator
+  driver's buffered WranglerD1 flush (1 flush warning in its log) and the
+  Worker's live D writes on the same rows. Found by an e_json-NULL audit;
+  repaired with a second E pass after D finished — exactly those 10
+  re-ran (531 fresh-skips), final e_json NULL count = 0.
+
+COMPLETENESS + DISPLAY + SEARCH
+- Formula (code + README): A25 · B25 · C15 · D20 · E15; done=1,
+  partial/stale=½, pending/none=0; C renormalized out when the record has
+  no remote MCP endpoint. Computed at read — no stored column.
+- Page check (live): /skills/101-skills/building-inferencesh-apps contains
+  the "Generated summary" panel, the verbatim label "Generated by the
+  registry from the source — not the publisher's words", the trust line
+  "Source references: downloads and executes a remote script", and the
+  factual line "A ✓ · B ✓ · C — · D ✓ · E ✓".
+- API check (live): /api/search for the same record — description is the
+  SOURCE description (untouched), generated content nested under
+  `generated` (label: "generated"), structured `enrichment`
+  {layers, completeness: 100, trust:{flags:[…]}}.
+- Search spot-check: q="rough product idea concept artifact" →
+  akillness/bmad-idea at #2; "rough" exists ONLY in its generated use
+  case — generated vocabulary recalls at the lowest tier (search_text +
+  embeddings), below source and derived text.
+- RE-EMBED: paged /admin/embed sweeps after D+E. Sweep 1 embedded 851
+  then hit a drain-import D1 conflict at page 14; sweep 2 was cut off by
+  a sandbox VM restart (~09:20Z, /tmp wiped — the token sink and driver
+  were regenerated/rebuilt under data/); the confirmation sweep then
+  paged the ENTIRE catalog: 59 pages · 11,705 considered · 603 embedded ·
+  0 failures · done=true. Every slice record's embedding now includes
+  its generated extras (the sweep ran after D+E were final).
+
+WEEKLY REFRESH CRON
+- "41 5 * * 1" (Mondays 05:41 UTC) added to wrangler.deploy.jsonc triggers;
+  scheduled() dispatches by expression to handleEnrichmentRefresh
+  (layers A + C, 4 pages × 25 in traffic order, cadence-gated inside the
+  pipeline). Verified live via the API (above). D is deliberately not in
+  the cron (hash-keyed, operator-gated for cost visibility).
+
+SMOKE (live): home 200 · "build games" → game skills on top
+(akillness/game-build-log-triage, shixuuu/game-builder-getting-started) ·
+POST /advisor (PDF goal) → claude-haiku-5-5, github/convert-pdf-to-md
+first, honest caveats · MCP initialize → talents-gateway 0.2.0 ·
+/dashboard → 303 → /sign-in (auth dormant by design).
+
+TESTS: root suite 178 tests — 177 pass, 1 pre-existing skip, 0 fail.
++33 new in test/enrichment2.test.ts (taxonomy/validation incl. all four
+reply-repair paths, withholding incl. "---", scanner fixtures + FP guards:
+prose mention / negation lines / env-var reads NOT flagged, drift
+current/changed/unknown, completeness incl. C renormalization, store d/e
+reconcile rule, pipeline D idempotency + Worker-only gate + generated
+extras tiering, display/API label separation).

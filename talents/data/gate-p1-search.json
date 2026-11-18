@@ -1,0 +1,103 @@
+{
+  "engine": "typesense",
+  "base": "http://127.0.0.1:8108",
+  "queries": [
+    {
+      "label": "q=pdf finds anthropics/pdf first",
+      "path": "/search?q=pdf",
+      "results": [
+        "anthropics/pdf",
+        "garrytan/make-pdf",
+        "anthropics/canvas-design",
+        "carboneio/carbone-skill",
+        "anthropics/docx",
+        "skillmds/docs-writing",
+        "anthropics/document-skills",
+        "wonderwhy-er/desktop-commander",
+        "anthropics/example-skills"
+      ],
+      "pass": true
+    },
+    {
+      "label": "q=document finds anthropics/document-skills",
+      "path": "/search?q=document",
+      "results": [
+        "garrytan/document-generate",
+        "garrytan/document-release",
+        "donchitos/reverse-document",
+        "wshobson/documentation-standards",
+        "wshobson/code-documentation",
+        "wshobson/documentation-generation",
+        "anthropics/document-skills",
+        "anthropics/docx",
+        "anthropics/doc-coauthoring",
+        "box/box",
+        "cockroachdb/cockroachdb",
+        "webmcp-org/diataxis",
+        "makenotion/notion",
+        "anthropics/canvas-design",
+        "donchitos/consistency-check",
+        "donchitos/design-review",
+        "paperclipai/release-changelog-discord-message",
+        "paperclipai/simplified-english",
+        "webmcp-org/docs-authoring",
+        "fallow-rs/implement"
+      ],
+      "pass": true
+    },
+    {
+      "label": "q=pdff (typo) still finds anthropics/pdf",
+      "path": "/search?q=pdff",
+      "results": [
+        "anthropics/pdf",
+        "garrytan/make-pdf",
+        "anthropics/canvas-design",
+        "carboneio/carbone-skill",
+        "anthropics/docx",
+        "skillmds/docs-writing",
+        "anthropics/document-skills",
+        "wonderwhy-er/desktop-commander",
+        "anthropics/example-skills"
+      ],
+      "pass": true
+    },
+    {
+      "label": "q=pdf&kind=skill returns only skills",
+      "path": "/search?q=pdf&kind=skill",
+      "results": [
+        "anthropics/pdf",
+        "garrytan/make-pdf",
+        "anthropics/canvas-design",
+        "anthropics/docx"
+      ],
+      "pass": true
+    },
+    {
+      "label": "q=security finds 42crunch-ai/42crunch-api-security-testing",
+      "path": "/search?q=security",
+      "results": [
+        "skillmds/security",
+        "paperclipai/deal-with-security-advisory",
+        "donchitos/security-audit",
+        "42crunch-ai/42crunch-api-security-testing",
+        "wshobson/security-scanning",
+        "wshobson/frontend-mobile-security",
+        "anthropics/security-guidance",
+        "skillmds/code-security-review-pipeline",
+        "wshobson/backend-api-security",
+        "anthropics/claude-security",
+        "skillmds/mcp-security-audit-pipeline",
+        "wshobson/security-compliance",
+        "cockroachdb/cockroachdb",
+        "duendesoftware/duende-skills",
+        "wshobson/reverse-engineering",
+        "coderabbitai/coderabbit",
+        "garrytan/cso",
+        "brockmartin/roblox-game",
+        "evch1204/pr-review",
+        "dnyoussef/hook-creator"
+      ],
+      "pass": true
+    }
+  ]
+}

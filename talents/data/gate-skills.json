@@ -1,0 +1,101 @@
+{
+  "target": "anthropics/skills",
+  "marketplaceName": "anthropic-agent-skills",
+  "fetchedAt": "2026-11-10T23:09:02.379Z",
+  "total": 5,
+  "ok": 5,
+  "deadLetter": 0,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "anthropics/document-skills",
+      "url": "https://talents.sh/skills/anthropics/document-skills",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/xlsx/SKILL.md",
+        "skills/docx/SKILL.md",
+        "skills/pptx/SKILL.md",
+        "skills/pdf/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 4 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "f696f7858e5592de15b337e58b2b400bde1d7d0fc2a2288d1eb81340cad40c1b"
+    },
+    {
+      "id": "anthropics/example-skills",
+      "url": "https://talents.sh/skills/anthropics/example-skills",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/algorithmic-art/SKILL.md",
+        "skills/brand-guidelines/SKILL.md",
+        "skills/canvas-design/SKILL.md",
+        "skills/doc-coauthoring/SKILL.md",
+        "skills/frontend-design/SKILL.md",
+        "skills/internal-comms/SKILL.md",
+        "skills/mcp-builder/SKILL.md",
+        "skills/skill-creator/SKILL.md",
+        "skills/slack-gif-creator/SKILL.md",
+        "skills/theme-factory/SKILL.md",
+        "skills/web-artifacts-builder/SKILL.md",
+        "skills/webapp-testing/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 12 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "32a512df259a7799643d0cf80ad0af7569eb87ecd00081382a2abb7b49841934"
+    },
+    {
+      "id": "anthropics/claude-api",
+      "url": "https://talents.sh/skills/anthropics/claude-api",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/claude-api/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "07ab165e6364a78eb437d1963dee6583363ef699fa0aa7d41acaeb8777d7334e"
+    },
+    {
+      "id": "anthropics/academy-guide",
+      "url": "https://talents.sh/skills/anthropics/academy-guide",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/academy-guide/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "863fd9bb7621a12933e2cb06162f4777e5880945017bdffa70916f899d6aba95"
+    },
+    {
+      "id": "anthropics/discernment-nudge",
+      "url": "https://talents.sh/skills/anthropics/discernment-nudge",
+      "kind": "plugin",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        "skills/discernment-nudge/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "b138a5a3a2aef47a481860a3e277d0d800df0a03e94de67cae203f4293ea201f"
+    }
+  ],
+  "deadLetters": []
+}

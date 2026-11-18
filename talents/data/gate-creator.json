@@ -1,0 +1,224 @@
+{
+  "local": {
+    "boot A answers": {
+      "pass": true,
+      "detail": ""
+    },
+    "dashboard offers the one-click claim for the matching namespace": {
+      "pass": true,
+      "detail": ""
+    },
+    "POST /api/claims (login match) → claimed": {
+      "pass": true,
+      "detail": "{\"claimed\":\"anthropics\",\"method\":\"github-login-match\",\"claimedAt\":\"2026-11-11T02:01:47.826Z\"}"
+    },
+    "POST /api/claims (login mismatch) → 403": {
+      "pass": true,
+      "detail": "status 403"
+    },
+    "dashboard shows Verified publisher + honest payouts state": {
+      "pass": true,
+      "detail": ""
+    },
+    "public profile shows the Verified publisher badge": {
+      "pass": true,
+      "detail": ""
+    },
+    "listing edit saves (303 to saved view)": {
+      "pass": true,
+      "detail": "status 303"
+    },
+    "skill page labels the Publisher description": {
+      "pass": true,
+      "detail": ""
+    },
+    "priced page (owner view) shows price + split note": {
+      "pass": true,
+      "detail": "the anonymous disabled-Buy state is asserted in boot B"
+    },
+    "/api/search merges the publisher description + price": {
+      "pass": true,
+      "detail": "{\"id\":\"anthropics/pdf\",\"url\":\"https://talents.sh/skills/anthropics/pdf\",\"kind\":\"skill\",\"description\":\"Gate publisher description for PDF.\",\"publisherDescription\":true,\"priceCents\":1250,\"currency\":\"usd\",\"declaration\":\"Runs 1 skill(s) in your agent, following their SKILL.md instructions\",\"attested\":true}"
+    },
+    "unlist action saves": {
+      "pass": true,
+      "detail": "status 303"
+    },
+    "unlisted skill page → 404": {
+      "pass": true,
+      "detail": "status 404"
+    },
+    "unlisted skill absent from /api/search": {
+      "pass": true,
+      "detail": ""
+    },
+    "unlisted skill excluded from the aggregate (count drops by 1)": {
+      "pass": true,
+      "detail": "1093 → 1092"
+    },
+    "relist restores page + aggregate": {
+      "pass": true,
+      "detail": ""
+    },
+    "listing manager lists the namespace with price state": {
+      "pass": true,
+      "detail": ""
+    },
+    "analytics page renders (zeros are honest)": {
+      "pass": true,
+      "detail": ""
+    },
+    "signed checkout webhook → fulfilled": {
+      "pass": true,
+      "detail": "{\"received\":true,\"fulfilled\":\"fulfilled\"}"
+    },
+    "same webhook redelivered → idempotent (already)": {
+      "pass": true,
+      "detail": "{\"received\":true,\"fulfilled\":\"already\"}"
+    },
+    "bad signature → 401": {
+      "pass": true,
+      "detail": "status 401"
+    },
+    "success page shows the one-time install token": {
+      "pass": true,
+      "detail": ""
+    },
+    "token pickup is one-time (second visit: already shown)": {
+      "pass": true,
+      "detail": ""
+    },
+    "gateway prepare (priced, no token) → payment_required, no hash leaked": {
+      "pass": true,
+      "detail": "{\"status\":\"payment_required\",\"skill\":\"anthropics/pdf\",\"price\":{\"amountCents\":1250,\"currency\":\"usd\"},\"checkoutUrl\":\"https://talents.sh/skills/anthropics/pdf\",\"notice\":\"This listing is priced. Buy it on"
+    },
+    "gateway prepare (priced, valid token) → prepared": {
+      "pass": true,
+      "detail": ""
+    },
+    "gateway confirm (token + hash ceremony) → installed": {
+      "pass": true,
+      "detail": "{\"status\":\"installed\",\"skill\":\"anthropics/pdf\",\"installId\":\"463eb3fb-f728-4222-bf4f-16394360ec90\",\"pinnedRef\":\"main\",\"attestationHash\":\"52dbe5542e451e33c47d6e82647522ec8819ec17bbd359a6357548e9b4cdcf1e"
+    },
+    "spent token no longer unlocks prepare": {
+      "pass": true,
+      "detail": ""
+    },
+    "free skill prepare unchanged": {
+      "pass": true,
+      "detail": ""
+    },
+    "free skill confirm unchanged → installed": {
+      "pass": true,
+      "detail": "{\"status\":\"installed\",\"skill\":\"anthropics/docx\",\"installId\":\"ee3dd91c-d096-40f4-af8d-18e60f918fc5\",\"pinnedRef\":\"main\",\"attestationHash\":\"e785c8cfb0efc4f92abe3c5"
+    },
+    "boot B answers": {
+      "pass": true,
+      "detail": ""
+    },
+    "unauthenticated /dashboard → redirect to /sign-in": {
+      "pass": true,
+      "detail": "status 303 location /sign-in"
+    },
+    "unauthenticated POST /api/claims → 401": {
+      "pass": true,
+      "detail": "status 401"
+    },
+    "/sign-in renders the honest awaiting-Clerk-keys state": {
+      "pass": true,
+      "detail": ""
+    },
+    "public skill page unaffected by auth state": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "priced page (anonymous, no Stripe keys) shows price + honest disabled Buy": {
+      "pass": true,
+      "detail": ""
+    },
+    "stripe webhook unconfigured → 503 (never unverified-accept)": {
+      "pass": true,
+      "detail": "status 503"
+    }
+  },
+  "live": {
+    "home → 200": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "\"build games\" top hit is a game skill": {
+      "pass": true,
+      "detail": "gamedev-skills/ebitengine-game"
+    },
+    "scout record still searchable (usefulapi/localazy first)": {
+      "pass": true,
+      "detail": "usefulapi/localazy"
+    },
+    "registry-label profile shows the honest claim note": {
+      "pass": true,
+      "detail": ""
+    },
+    "advisor still answers (pdf goal → anthropics/pdf match)": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "MCP gateway handshake on mcp.talents.sh": {
+      "pass": true,
+      "detail": ""
+    },
+    "MCP search_skill returns anthropics/pdf": {
+      "pass": true,
+      "detail": ""
+    },
+    "/dashboard unauthenticated → 303 /sign-in": {
+      "pass": true,
+      "detail": "status 303"
+    },
+    "/sign-in renders the awaiting-Clerk-keys setup state": {
+      "pass": true,
+      "detail": ""
+    },
+    "POST /api/claims unauthenticated → 401": {
+      "pass": true,
+      "detail": "status 401"
+    },
+    "POST /webhooks/stripe unconfigured → 503": {
+      "pass": true,
+      "detail": "status 503"
+    },
+    "POST /api/checkout on a free listing → 400 (no fake checkout)": {
+      "pass": true,
+      "detail": "status 400"
+    },
+    "fixture record is live (page 200)": {
+      "pass": true,
+      "detail": "status 200"
+    },
+    "fixture record is searchable": {
+      "pass": true,
+      "detail": ""
+    },
+    "fixture record is in the aggregate": {
+      "pass": true,
+      "detail": "aggregate entries ≈ 1099+"
+    },
+    "unlisted fixture page → 404": {
+      "pass": true,
+      "detail": "status 404"
+    },
+    "unlisted fixture absent from search": {
+      "pass": true,
+      "detail": ""
+    },
+    "unlisted fixture excluded from aggregate": {
+      "pass": true,
+      "detail": ""
+    },
+    "restore verified: fixture record gone (page 404)": {
+      "pass": true,
+      "detail": "status 404"
+    }
+  },
+  "pass": true,
+  "liveAggregateCountAfterRestore": 1099
+}

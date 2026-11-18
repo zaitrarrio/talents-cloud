@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CC-B v2 · Grove × GitHub DX — Talents</title>
+<style>
+:root{--bg:#EDEAE4;--warm:#F5F1EA;--card:#FCFBF9;--ink:#1A1714;--soft:#4A443D;--mut:#837A72;--bd:rgba(26,23,20,.12);--acc:#B4762A;--deep:#8A5A1F;--asoft:rgba(180,118,42,.1);--good:#2F7D4F;--bad:#B3402A;--code:#241E16}
+*{box-sizing:border-box;margin:0}body{font-family:"Instrument Sans",Inter,-apple-system,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+a{color:var(--deep);text-decoration:none;cursor:pointer}
+header{display:flex;align-items:center;gap:18px;padding:12px 28px;background:#1A1714;color:#EDEAE4;position:sticky;top:0;z-index:5}
+.logo{font-family:Newsreader,Georgia,serif;font-size:22px;color:#fff}.logo b{color:#E8BE7E}
+header input{flex:0 1 340px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+header nav a{color:#C9C0B4;margin-left:16px;font-weight:550}header nav a:hover{color:#fff}
+.av{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+.av.sq{border-radius:8px}
+main{max-width:1100px;margin:0 auto;padding:30px 24px}
+.hero{text-align:center;padding:20px 0 4px}.hero h1{font-family:Newsreader,Georgia,serif;font-size:42px;font-weight:500}
+.hero p{color:var(--soft);margin-top:8px;font-size:16.5px}
+.goal{display:flex;gap:10px;max-width:620px;margin:22px auto 0}.goal input{flex:1;padding:14px 18px;border:1px solid var(--bd);border-radius:999px;background:var(--card);font-size:15.5px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:999px;padding:11px 20px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--deep);border:1px solid var(--acc)}.btn.sm{padding:6px 13px;font-size:13px}
+.btn.star{background:var(--card);color:var(--ink);border:1px solid var(--bd)}
+.chips{display:flex;gap:8px;justify-content:center;margin:14px 0 30px;flex-wrap:wrap}.gchip{padding:7px 15px;border-radius:999px;background:var(--card);border:1px solid var(--bd);cursor:pointer;font-size:13.5px}
+h2{font-family:Newsreader,Georgia,serif;font-size:25px;font-weight:600;margin:28px 0 12px}
+.stack{background:linear-gradient(135deg,#2A2118,#4A3520);color:#F5F1EA;border-radius:20px;padding:24px}
+.stack h3{font-family:Newsreader,Georgia,serif;font-size:24px}.stack .mono{color:#C9B99A}
+.srow{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.06);border-radius:12px;padding:11px 15px;margin-top:9px;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+.card .hd{display:flex;gap:10px;align-items:center}
+.name{font-size:16.5px;font-weight:650}.name span{color:var(--mut);font-weight:400}
+.url{font-size:12px;color:var(--mut);font-family:"JetBrains Mono",monospace}
+.desc{color:var(--soft);margin-top:8px;font-size:14px}
+.perm{margin-top:10px;padding:8px 11px;background:var(--warm);border-radius:9px;font-size:12.5px;color:var(--soft)}
+.meta{display:flex;gap:14px;color:var(--mut);font-size:12.5px;margin-top:10px;flex-wrap:wrap}.acts{display:flex;gap:8px;margin-top:12px}
+.chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2.5px 8px;border-radius:999px;background:var(--asoft);color:var(--deep)}
+.badge{font-size:11.5px;font-weight:700;color:var(--good)}
+.view{display:none}.view.on{display:block}
+.crumb{font-size:19px}.crumb b{font-weight:650}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin:16px 0 18px;flex-wrap:wrap}
+.tabs a{padding:8px 14px;color:var(--soft);border-bottom:2px solid transparent}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 300px;gap:20px}
+.readme{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:20px}
+.readme h3{font-family:Newsreader,Georgia,serif;font-size:20px;margin-bottom:8px}.readme p{color:var(--soft);margin:8px 0;font-size:14.5px}
+.files{border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.files div{padding:9px 14px;background:var(--card);border-bottom:1px solid var(--bd);font-size:13.5px;display:flex;justify-content:space-between}
+.files div:last-child{border-bottom:0}
+.side{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:16px;margin-bottom:16px}
+.side h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-bottom:10px}
+.kv{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;border-bottom:1px dashed var(--bd)}
+.code{background:var(--code);color:#EDEAE4;border-radius:10px;padding:12px 14px;font-family:"JetBrains Mono",monospace;font-size:12.5px;display:flex;justify-content:space-between;gap:10px;margin-top:8px;overflow-x:auto;white-space:nowrap}
+.code button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:6px;padding:3px 10px;cursor:pointer;flex:none}
+.modal{position:fixed;inset:0;background:rgba(26,23,20,.45);display:none;align-items:center;justify-content:center;z-index:9}.modal.on{display:flex}
+.sheet{background:var(--card);border-radius:20px;max-width:560px;width:92%;padding:28px;max-height:88vh;overflow:auto}.sheet li{margin:7px 0;color:var(--soft)}
+.note{font-size:12.5px;color:var(--mut)}.revoked{color:var(--bad);font-weight:700}
+.stepnum{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin-right:10px;flex:none}
+.bigav{width:84px;height:84px;border-radius:18px;background:linear-gradient(135deg,#B4762A,#8A5A1F);color:#fff;display:flex;align-items:center;justify-content:center;font-family:Newsreader,serif;font-size:34px}
+@media(max-width:860px){.grid,.cols{grid-template-columns:1fr}.hero h1{font-size:31px}header input{display:none}}
+</style></head><body>
+<header><div class="logo">Talents <b>Grove</b></div><input placeholder="Search skills — try &quot;invoice&quot; or owner/name"><nav><a onclick="go('home')">Explore</a><a onclick="go('publish')">Publish</a><a onclick="go('library')">Your library</a></nav><span style="margin-left:auto" class="av">Z</span></header>
+<main>
+<!-- HOME -->
+<section id="home" class="view on">
+<div class="hero"><h1>What do you want done?</h1><p>Every skill lives at a name you can say, share, and install — <span class="mono">owner/name</span> — and stays in its author's repo. Nothing to import. Nothing to export.</p>
+<div class="goal"><input placeholder="e.g. Close my books every month"><button class="btn" onclick="document.getElementById('stack').scrollIntoView({behavior:'smooth'})">Find my stack</button></div>
+<div class="chips"><span class="gchip">Close my books</span><span class="gchip">Run my inbox</span><span class="gchip">Prep my meetings</span><span class="gchip">Watch my competitors</span></div></div>
+<div class="stack" id="stack"><div class="mono">GOAL STACK · CLOSE MY BOOKS · ONE DECLARATION</div><h3>Two named skills. One approval.</h3>
+<div class="srow"><span><b>ledgerline/invoice-reconciler</b> · Playbook</span><span>$19 + ≤$0.40/run</span></div>
+<div class="srow"><span><b>kaplit-labs/inbox-triage</b> · MCP server</span><span>$8/mo</span></div>
+<div class="srow"><span>Total</span><span><b>$27 + your run cap</b> · creators keep 85%</span></div>
+<div class="acts"><button class="btn" onclick="decl()">See the one declaration</button><button class="btn ghost" style="color:#E8BE7E;border-color:#E8BE7E" onclick="go('skill')">Open ledgerline/invoice-reconciler</button></div></div>
+<h2>Trending among finance operators this week</h2>
+<div class="grid" id="cards"></div>
+<p class="note" style="margin-top:14px">Ranking uses 30-day retention and recent reviews — not raw install counts. Popular-but-abandoned doesn't win here.</p>
+</section>
+<!-- SKILL PAGE (repo-style) -->
+<section id="skill" class="view">
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="av sq">L</span>
+<div><div class="crumb"><a onclick="go('owner')">ledgerline</a> / <b>invoice-reconciler</b> <span class="chip">Playbook</span> <span class="badge">✓ Verified namespace</span></div>
+<div class="url">talents.sh/skills/ledgerline/invoice-reconciler</div></div>
+<span style="margin-left:auto;display:flex;gap:8px"><button class="btn star sm">☆ Star · 1,204</button><button class="btn sm" onclick="decl()">Install</button></span></div>
+<div class="tabs"><a class="on">Overview</a><a>Releases</a><a>Permissions</a><a>Reviews · 327</a><a>Insights</a></div>
+<div class="cols"><div>
+<div class="files">
+<div><span>📄 SKILL.md</span><span class="note">the skill — read by your agent</span></div>
+<div><span>📄 .claude-plugin/plugin.json</span><span class="note">manifest, as authored</span></div>
+<div><span>📁 scripts/ · references/</span><span class="note">from the source repo</span></div>
+<div><span class="note">Source: github.com/ledgerline/invoice-reconciler @ v2.0.1 (tag) · indexed in place — Talents stores metadata + attestation, never a copy of the skill</span><span class="badge">in sync · 2m ago</span></div>
+</div>
+<div class="readme"><div class="note" style="text-transform:uppercase;letter-spacing:.06em">README — rendered from the source repo</div>
+<h3>Invoice Reconciler</h3><p>Reconciles Stripe invoices against your books, flags mismatches, and files a monthly close report. Works in Claude Code, Gia, and any Plugin-Marketplace host — because it never left its repo.</p><p><b>Use it by name:</b> <span class="mono">ledgerline/invoice-reconciler</span> · 92% of installers are still using it after 30 days.</p></div>
+<div class="side" style="margin-top:16px"><h4>Permissions — derived from plugin.json, confirmed by the publisher</h4>
+<div class="perm">Stripe: read · Files: read/write in your chosen folder · Asks before writing · Never: email, calendar, browser</div>
+<p class="note" style="margin-top:8px">Declaration hash matches the attested source at v2.0.1. If the source changes, the hash changes — and pinned installs refuse to run until you re-approve.</p></div>
+</div>
+<div><div class="side"><h4>Use this skill — no import, no export</h4>
+<p style="font-size:13.5px;color:var(--soft)">In Claude Code, once:</p><div class="code"><span>/plugin marketplace add talents</span><button>Copy</button></div>
+<p style="font-size:13.5px;color:var(--soft);margin-top:12px">Then install by name:</p><div class="code"><span>/plugin install ledgerline/invoice-reconciler</span><button>Copy</button></div>
+<p style="font-size:13.5px;color:var(--soft);margin-top:12px">Or just ask any connected agent:</p><div class="code"><span>Use ledgerline/invoice-reconciler@2.0.1</span><button>Copy</button></div>
+<p class="note" style="margin-top:10px">Installs resolve from the author's repo at the pinned tag — via the aggregated marketplace.json and the MCP gateway at <span class="mono">mcp.talents.sh</span>.</p></div>
+<div class="side"><h4>About</h4>
+<div class="kv"><span>Price</span><b>$19 + ≤$0.40/run</b></div><div class="kv"><span>Installs</span><b>3,912</b></div>
+<div class="kv"><span>Retention 30d</span><b>92%</b></div><div class="kv"><span>Latest release</span><b class="mono">v2.0.1 · tag</b></div>
+<div class="kv"><span>Earlier</span><b class="mono">v1.4.0 · <span class="revoked">revoked</span></b></div>
+<div class="kv"><span>Health score</span><b>96 / 100</b></div></div></div></div>
+</section>
+<!-- OWNER PROFILE -->
+<section id="owner" class="view">
+<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div class="bigav">L</div><div><h2 style="margin:0;font-size:30px">Ledgerline</h2><div class="url" style="font-size:14px">talents.sh/ledgerline · github.com/ledgerline</div><p style="color:var(--soft);margin-top:6px">Finance skills, signed and boring in the best way. <span class="badge">✓ Verified namespace</span> · 3 skills · 41,208 runs · 0 revocations · joined via GitHub — namespace claimed by owning the GitHub org.</p></div></div>
+<h2>Pinned skills</h2><div class="grid">
+<div class="card"><div class="hd"><span class="av sq">L</span><div><div class="name"><span>ledgerline /</span> invoice-reconciler</div><div class="url">talents.sh/skills/ledgerline/invoice-reconciler</div></div></div><p class="desc">Reconciles Stripe invoices against your books.</p><div class="meta"><span>☆ 1,204</span><span>3,912 installs</span><span>92% retention</span></div><div class="acts"><button class="btn sm" onclick="go('skill')">Open</button></div></div>
+<div class="card"><div class="hd"><span class="av sq">L</span><div><div class="name"><span>ledgerline /</span> payroll-close</div><div class="url">talents.sh/skills/ledgerline/payroll-close</div></div></div><p class="desc">Payroll close checklist + variance report, monthly.</p><div class="meta"><span>☆ 486</span><span>1,230 installs</span><span>89% retention</span></div><div class="acts"><button class="btn sm ghost">Open</button></div></div></div>
+</section>
+<!-- PUBLISH -->
+<section id="publish" class="view"><h2 style="font-size:30px;margin-top:0">Publish = push. That's it.</h2>
+<p style="color:var(--soft);max-width:680px">Your skill already exists in the format every host reads. Talents indexes it where it lives — there is no export step, no upload, no second format to maintain.</p>
+<div class="card" style="margin-top:18px"><p><span class="stepnum">1</span><b>Keep your skill in your repo</b> — a <span class="mono">SKILL.md</span> directory, or a plugin with <span class="mono">.claude-plugin/plugin.json</span>. Change nothing.</p>
+<p style="margin-top:14px"><span class="stepnum">2</span><b>Connect it once</b> — paste a repo URL below, or install the Talents GitHub App so pushes re-index in seconds. If your repo is already in any indexed marketplace, skip this — you're already listed.</p>
+<div class="goal" style="margin-top:10px"><input placeholder="github.com/you/your-skill"><button class="btn">Add repo</button></div>
+<p style="margin-top:14px"><span class="stepnum">3</span><b>Tag a release</b> — <span class="mono">git tag v1.0.0</span>. Your skill is live at <span class="mono">talents.sh/skills/you/your-skill</span>. Set a price on the web later if you want one — pricing is web metadata, never a file in your repo.</p></div>
+</section>
+<!-- LIBRARY -->
+<section id="library" class="view"><h2 style="margin-top:0">Your library</h2><p style="color:var(--soft)">Pinned by name + tag. Source changes after pinning fail the attestation hash and are refused — you re-approve, never auto-update.</p>
+<div class="grid" style="margin-top:16px">
+<div class="card"><div class="name"><span>zay /</span> research-tabs</div><div class="url">pinned v1.1.0 · up to date</div><div class="acts"><button class="btn sm">Run</button></div></div>
+<div class="card"><div class="name"><span>ledgerline /</span> invoice-reconciler</div><div class="url">pinned v1.4.0</div><p class="revoked" style="margin-top:8px">This release was revoked upstream — it will not run.</p><div class="acts"><button class="btn sm">Update to v2.0.1</button></div></div>
+<div class="card"><div class="name"><span>northloop /</span> site-watcher</div><div class="url">pinned v0.7.2 · release v0.8.1 available</div><div class="acts"><button class="btn sm">Run</button></div></div></div>
+</section>
+</main>
+<div class="modal" id="decl"><div class="sheet"><h2 style="margin:0 0 6px">One declaration, whole stack</h2>
+<p class="note">ledgerline/invoice-reconciler v2.0.1 + kaplit-labs/inbox-triage v0.9.4 · attestations verified against source</p>
+<p style="font-weight:600;margin:12px 0 6px">Together, these skills will be able to:</p>
+<ul><li><b>Read</b> Stripe invoices and email receipts</li><li><b>Write</b> one monthly close report</li><li>Spend at most <b>$0.40 per run</b> — a cap you set</li></ul>
+<p style="font-weight:600;margin:12px 0 6px">They will never:</p><ul><li>Send email, move money, or touch your calendar or browser</li><li>Change without a new declaration — installs are pinned to tag + source hash</li></ul>
+<p style="margin-top:12px"><b>Total: $27 today</b> ($19 + $8/mo) + capped runs · creators keep 85%</p>
+<div class="acts" style="margin-top:16px"><button class="btn" onclick="closeDecl()">Confirm install</button><button class="btn ghost" onclick="closeDecl()">Not yet</button></div></div></div>
+<script>
+const DATA=[
+{n:"ledgerline",s:"invoice-reconciler",k:"Playbook · $19 + ≤$0.40/run",d:"Reconciles Stripe invoices against your books.",perm:"Stripe: read · Files: read/write · Asks before writing",star:"1,204",i:"3,912 installs",r:"92% retention"},
+{n:"zay",s:"research-tabs",k:"Skill · FREE",d:"Turns open tabs into a sourced brief filed in Canvas.",perm:"Browser: fetch · Files: write · No email access",star:"2,031",i:"12,408 installs",r:"88% retention"},
+{n:"kaplit-labs",s:"inbox-triage",k:"MCP server · $8/mo",d:"Labels, drafts, and files email by your rules.",perm:"Email: read + send · Drafts held for approval",star:"964",i:"8,155 installs",r:"85% retention"},
+{n:"northloop",s:"site-watcher",k:"Agent · $29 · offline",d:"Watches pages you name, reports only real changes.",perm:"Network: named pages only · Runs offline",star:"733",i:"4,330 installs",r:"90% retention"}];
+document.getElementById('cards').innerHTML=DATA.map(e=>`<div class="card"><div class="hd"><span class="av sq">${e.n[0].toUpperCase()}</span><div><div class="name"><span>${e.n} /</span> ${e.s}</div><div class="url">talents.sh/skills/${e.n}/${e.s}</div></div></div><p class="desc">${e.d}</p><div class="perm">${e.perm}</div><div class="meta"><span>☆ ${e.star}</span><span>${e.i}</span><span>${e.r}</span><span class="chip">${e.k}</span></div><div class="acts"><button class="btn sm" onclick="decl()">Install</button><button class="btn sm ghost" onclick="go('skill')">Open skill page</button></div></div>`).join('');
+function go(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.getElementById(id).classList.add('on');window.scrollTo(0,0)}
+function decl(){document.getElementById('decl').classList.add('on')}function closeDecl(){document.getElementById('decl').classList.remove('on')}
+</script></body></html>

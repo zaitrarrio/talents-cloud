@@ -1,0 +1,6 @@
+Advisor live verification — 2026-11-10 (after user supplied the Anthropic key once; verified HTTP 200 vs Anthropic, set as Worker secret via stdin only, value never filed)
+POST talents.maximalize.workers.dev/advisor {goal: 'I need to work with PDF files'} -> 200, model claude-haiku-5-5, answer names anthropics/pdf, matches[0]=anthropics/pdf
+POST talents.maximalize.workers.dev/advisor {goal: 'audit my API for security issues'} -> 200, names 42crunch-ai/42crunch-api-security-testing first
+POST talents.sh/advisor (goal 1) -> 200, names anthropics/pdf (an earlier 404 during secret-version edge propagation cleared on retry)
+POST mcp.talents.sh/advisor -> 200
+Supersedes the blocked state in gate-advisor.json (surrogate-as-secret auth failure).

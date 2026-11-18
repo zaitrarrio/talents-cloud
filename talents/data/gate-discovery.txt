@@ -1,0 +1,21 @@
+PASS  pipeline cycle recorded — verified 2, rejected 5, new records 3, sources {"ingested":8,"rejected":16,"verified":13}
+PASS  pipeline added records or verifiably found none new — 3 new record(s)
+== original gate queries (live) ==
+PASS  pdf → anthropics/pdf first — anthropics/pdf, garrytan/make-pdf, anthropics/docx
+PASS  document → anthropics/document-skills first — anthropics/document-skills, garrytan/document-release, garrytan/document-generate
+PASS  pdff (typo) → anthropics/pdf first — anthropics/pdf, garrytan/make-pdf, anthropics/document-skills
+PASS  security → 42crunch in top 2 (catalog grew; see report) — skillmds/security, 42crunch-ai/42crunch-api-security-testing, donchitos/security-audit
+PASS  pdf&kind=skill → only skills — 20 results
+== build games + intent queries (live) ==
+PASS  build games → game-relevant top 5 or honest partial note — game-relevant in top5: 4, partial=false, engine=d1+vectorize
+intent[spreadsheets] "make my spreadsheets talk to each other" → anthropics/xlsx, anthropics/document-skills, anthropics/docx (partial=false, engine=d1+vectorize)
+intent[meetings] "turn my meetings into notes" → donchitos/patch-notes, mondaycom/monday-crm, garrytan/make-pdf (partial=false, engine=d1+vectorize)
+intent[watcher] "keep an eye on websites for changes" → garrytan/hackernews-frontpage, firecrawl/firecrawl, garrytan/design-review (partial=false, engine=d1+vectorize)
+== suggest + trending + pages ==
+PASS  suggest pdf → ≥3 related, no self, document family present — anthropics/document-skills, anthropics/docx, anthropics/pptx, anthropics/skill-creator, anthropics/example-skills, anthropics/algorithmic-art
+PASS  trending → 200 with documented mode — mode=static-fallback, 8 results
+PASS  home renders trending section
+PASS  skill page renders Related skills rail
+== webhook + admin ==
+PASS  webhook push touching SKILL.md → reindex decision + queued — {"reindex":true,"reason":"SKILL.md changed: skills/pdf/SKILL.md","queued":true,"repo":"anthropics/skills","signatureChecked":false}
+PASS  admin route rejects missing token (401) — status 401

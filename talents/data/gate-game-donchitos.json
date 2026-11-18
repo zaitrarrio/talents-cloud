@@ -1,0 +1,88 @@
+{
+  "target": "donchitos/claude-code-game-studios",
+  "marketplaceName": null,
+  "fetchedAt": "2026-11-10T20:41:57.031Z",
+  "total": 78,
+  "ok": 78,
+  "deadLetter": 0,
+  "note": null,
+  "sampleRecords": [
+    {
+      "id": "donchitos/adopt",
+      "url": "https://talents.sh/skills/donchitos/adopt",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        ".claude/skills/adopt/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "1d6833757a548a563b6993afc7c85085577b2817edcdc016bc277f5792c4fc23"
+    },
+    {
+      "id": "donchitos/architecture-decision",
+      "url": "https://talents.sh/skills/donchitos/architecture-decision",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        ".claude/skills/architecture-decision/SKILL.md",
+        ".claude/skills/architecture-decision/CONTRACT.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "f04bbf330d172b29d3e5c225cc8370ec6f76129c24d486dfc9ebbc5f88a4f450"
+    },
+    {
+      "id": "donchitos/architecture-review",
+      "url": "https://talents.sh/skills/donchitos/architecture-review",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        ".claude/skills/architecture-review/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "db5c0d9f3462e0e70394ea8294fd912ea4ba5335465184dd05b7e1e05fa9e395"
+    },
+    {
+      "id": "donchitos/art-bible",
+      "url": "https://talents.sh/skills/donchitos/art-bible",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        ".claude/skills/art-bible/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "29b79fa9b90c7ed511e6aa697af62bf4022fce90a79fe7c35e6ae0e1b7e1e485"
+    },
+    {
+      "id": "donchitos/asset-audit",
+      "url": "https://talents.sh/skills/donchitos/asset-audit",
+      "kind": "skill",
+      "sourceType": "github",
+      "pointerOnly": false,
+      "ref": "main",
+      "filesHashed": [
+        ".claude/skills/asset-audit/SKILL.md"
+      ],
+      "declarationSummary": [
+        "Runs 1 skill(s) in your agent, following their SKILL.md instructions"
+      ],
+      "attestationHash": "51e8563a031d6e03d37d63863027ee37bbba6d88d71274b8fa3a7efac3a2184c"
+    }
+  ],
+  "deadLetters": []
+}

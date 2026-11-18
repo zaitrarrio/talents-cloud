@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/registry-key.json
+data/namespaces.json
+.tools/
+cf/node_modules/
+cf/.wrangler/
+cf/dist/
+cf/seed.sql
+cf/tamper.sql
+cf/wrangler.deploy.jsonc

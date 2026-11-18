@@ -1,0 +1,32 @@
+{
+  "gate": "advisor",
+  "base": "https://talents.maximalize.workers.dev",
+  "at": "2026-11-10T20:07:11.307Z",
+  "pass": false,
+  "results": [
+    {
+      "goal": "I need to work with PDF files",
+      "expectId": "anthropics/pdf",
+      "httpStatus": 502,
+      "pass": false,
+      "model": null,
+      "matchIds": [],
+      "answerExcerpt": null,
+      "error": "advisor request failed",
+      "errorKind": "auth",
+      "raw": null
+    },
+    {
+      "goal": "audit my API for security issues",
+      "expectId": "42crunch-ai/42crunch-api-security-testing",
+      "httpStatus": 502,
+      "pass": false,
+      "model": null,
+      "matchIds": [],
+      "answerExcerpt": null,
+      "error": "advisor request failed",
+      "errorKind": "auth",
+      "raw": null
+    }
+  ]
+}

@@ -1,0 +1,366 @@
+{
+  "at": "2026-11-11T08:02:15.305Z",
+  "checks": [
+    {
+      "name": "stars 0xsline/ai-cinematic-short-film",
+      "ok": true,
+      "detail": "stored 3051 vs live 3053 (drift +2, tolerance ±31; 0xsline/openchatcut)"
+    },
+    {
+      "name": "stars 101-skills/affirmations",
+      "ok": true,
+      "detail": "stored 23 vs live 23 (drift +0, tolerance ±10; 101-skills/superpowers)"
+    },
+    {
+      "name": "stars 19pine-ai/pine",
+      "ok": true,
+      "detail": "stored 2 vs live 2 (drift +0, tolerance ±10; 19pine-ai/pine-mcp-server)"
+    },
+    {
+      "name": "stars 2dmurali/review-loop",
+      "ok": true,
+      "detail": "stored 7 vs live 7 (drift +0, tolerance ±10; 2dmurali/review-loop-skill)"
+    },
+    {
+      "name": "stars 42crunch-ai/42crunch-api-security-testing",
+      "ok": true,
+      "detail": "stored 1 vs live 1 (drift +0, tolerance ±10; 42crunch-ai/claude-plugins)"
+    },
+    {
+      "name": "stars 854labs/account-executive-jobs",
+      "ok": true,
+      "detail": "stored 0 vs live 0 (drift +0, tolerance ±10; 854labs/account-executive-jobs)"
+    },
+    {
+      "name": "readme 0xsline/ai-cinematic-short-film",
+      "ok": true,
+      "detail": "excerpt is a faithful substring of the live README"
+    },
+    {
+      "name": "readme 0xsline/asset-import",
+      "ok": true,
+      "detail": "excerpt is a faithful substring of the live README"
+    },
+    {
+      "name": "inventory 19pine-ai/pine",
+      "ok": true,
+      "detail": "skill \"pine\" at plugins/pine/skills/pine present in live tree"
+    },
+    {
+      "name": "introspection bellman/bellman",
+      "ok": true,
+      "detail": "16 tools match the manual session"
+    },
+    {
+      "name": "r2 objects",
+      "ok": true,
+      "detail": "977 objects in talents-assets"
+    },
+    {
+      "name": "r2 sample icon via /assets",
+      "ok": true,
+      "detail": "0xsline/ai-cinematic-short-film → HTTP 200 image/png"
+    },
+    {
+      "name": "r2 sample readme via /assets",
+      "ok": true,
+      "detail": "0xsline/ai-cinematic-short-film → HTTP 200"
+    },
+    {
+      "name": "search by tool name",
+      "ok": true,
+      "detail": "q=\"bellman_start\" → parent bellman/bellman found"
+    },
+    {
+      "name": "search by sub-inventory name",
+      "ok": true,
+      "detail": "q=\"pine\" → parent 19pine-ai/pine found"
+    },
+    {
+      "name": "smoke home",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "smoke build games",
+      "ok": true,
+      "detail": "top: akillness/game-build-log-triage"
+    },
+    {
+      "name": "smoke advisor",
+      "ok": true,
+      "detail": "HTTP 200, first match github/convert-pdf-to-md"
+    },
+    {
+      "name": "smoke mcp handshake",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "smoke dashboard auth redirect",
+      "ok": true,
+      "detail": "HTTP 303 → /sign-in"
+    },
+    {
+      "name": "enriched page tools panel",
+      "ok": true,
+      "detail": "bellman/bellman renders the introspected tools panel"
+    },
+    {
+      "name": "enriched page source facts",
+      "ok": true,
+      "detail": "0xsline/ai-cinematic-short-film renders the source facts panel"
+    }
+  ],
+  "coverage": {
+    "listedTotal": 9384,
+    "remoteMcpCount": 51,
+    "trafficSlice": 500,
+    "sliceUnique": 546,
+    "slice": {
+      "a": {
+        "done": 483,
+        "none": 28,
+        "partial": 30
+      },
+      "b": {
+        "done": 536,
+        "partial": 5
+      },
+      "c": {
+        "done": 2,
+        "none": 537,
+        "partial": 2
+      },
+      "enriched": 541,
+      "unenriched": 5
+    },
+    "remoteMcp": {
+      "a": {
+        "done": 19,
+        "none": 28,
+        "partial": 2
+      },
+      "b": {
+        "done": 49
+      },
+      "c": {
+        "done": 2,
+        "none": 45,
+        "partial": 2
+      },
+      "enriched": 49,
+      "unenriched": 2
+    },
+    "traffic": {
+      "a": {
+        "done": 466,
+        "none": 3,
+        "partial": 28
+      },
+      "b": {
+        "done": 492,
+        "partial": 5
+      },
+      "c": {
+        "none": 497
+      },
+      "enriched": 497,
+      "unenriched": 3
+    },
+    "enrichedRowsTotal": 541,
+    "catalogPct": "5.8% of listed records have an enrichment row",
+    "reasons": {
+      "a": [
+        {
+          "reason": "github",
+          "n": 30
+        }
+      ],
+      "b": [
+        {
+          "reason": "tree",
+          "n": 4
+        }
+      ],
+      "c": [
+        {
+          "reason": "no public remote MCP endpoint",
+          "n": 492
+        },
+        {
+          "reason": "unreachable or not an MCP endpoint",
+          "n": 44
+        },
+        {
+          "reason": "requires auth",
+          "n": 1
+        },
+        {
+          "reason": "resources/list",
+          "n": 1
+        },
+        {
+          "reason": "tools/list",
+          "n": 1
+        },
+        {
+          "reason": "prompts/list",
+          "n": 1
+        }
+      ]
+    }
+  },
+  "samples": [
+    {
+      "id": "0xsline/ai-cinematic-short-film",
+      "check": "github stars",
+      "stored": 3051,
+      "live": 3053,
+      "drift": 2,
+      "tolerance": 31,
+      "ok": true
+    },
+    {
+      "id": "101-skills/affirmations",
+      "check": "github stars",
+      "stored": 23,
+      "live": 23,
+      "drift": 0,
+      "tolerance": 10,
+      "ok": true
+    },
+    {
+      "id": "19pine-ai/pine",
+      "check": "github stars",
+      "stored": 2,
+      "live": 2,
+      "drift": 0,
+      "tolerance": 10,
+      "ok": true
+    },
+    {
+      "id": "2dmurali/review-loop",
+      "check": "github stars",
+      "stored": 7,
+      "live": 7,
+      "drift": 0,
+      "tolerance": 10,
+      "ok": true
+    },
+    {
+      "id": "42crunch-ai/42crunch-api-security-testing",
+      "check": "github stars",
+      "stored": 1,
+      "live": 1,
+      "drift": 0,
+      "tolerance": 10,
+      "ok": true
+    },
+    {
+      "id": "854labs/account-executive-jobs",
+      "check": "github stars",
+      "stored": 0,
+      "live": 0,
+      "drift": 0,
+      "tolerance": 10,
+      "ok": true
+    },
+    {
+      "id": "0xsline/ai-cinematic-short-film",
+      "check": "readme excerpt fidelity",
+      "ok": true,
+      "probe": "OpenChatCut 简体中文 · English Open-source ChatCut alternative ·"
+    },
+    {
+      "id": "0xsline/asset-import",
+      "check": "readme excerpt fidelity",
+      "ok": true,
+      "probe": "OpenChatCut 简体中文 · English Open-source ChatCut alternative ·"
+    },
+    {
+      "id": "19pine-ai/pine",
+      "check": "sub-inventory path exists in live tree",
+      "entry": "plugins/pine/skills/pine",
+      "ok": true
+    },
+    {
+      "id": "bellman/bellman",
+      "check": "introspection vs manual MCP session",
+      "endpoint": "https://mcp.bellman.sh/mcp",
+      "live": [
+        "bellman_audit",
+        "bellman_confirm",
+        "bellman_connect",
+        "bellman_decide",
+        "bellman_evict",
+        "bellman_fs",
+        "bellman_invite",
+        "bellman_leave",
+        "bellman_memory",
+        "bellman_public_name",
+        "bellman_report",
+        "bellman_rooms",
+        "bellman_send",
+        "bellman_start",
+        "bellman_surface",
+        "bellman_sync"
+      ],
+      "stored": [
+        "bellman_audit",
+        "bellman_confirm",
+        "bellman_connect",
+        "bellman_decide",
+        "bellman_evict",
+        "bellman_fs",
+        "bellman_invite",
+        "bellman_leave",
+        "bellman_memory",
+        "bellman_public_name",
+        "bellman_report",
+        "bellman_rooms",
+        "bellman_send",
+        "bellman_start",
+        "bellman_surface",
+        "bellman_sync"
+      ],
+      "ok": true
+    }
+  ],
+  "smoke": {
+    "home": 200,
+    "buildGamesTop": "akillness/game-build-log-triage",
+    "advisor": {
+      "status": 200,
+      "first": "github/convert-pdf-to-md"
+    },
+    "mcpHandshake": 200,
+    "dashboard": 303,
+    "enrichedPage": {
+      "id": "bellman/bellman",
+      "toolsPanel": true
+    },
+    "factsPage": {
+      "id": "0xsline/ai-cinematic-short-film",
+      "sourceFactsPanel": true
+    }
+  },
+  "dashArtifact": {
+    "recordsWithDashDescription": 2,
+    "parsedDescriptionCandidates": 0
+  },
+  "r2": {
+    "bucket": "talents-assets",
+    "objects": 977,
+    "sampleIcon": {
+      "id": "0xsline/ai-cinematic-short-film",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    "sampleReadme": {
+      "id": "0xsline/ai-cinematic-short-film",
+      "status": 200
+    }
+  },
+  "pass": true
+}

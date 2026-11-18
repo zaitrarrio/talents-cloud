@@ -1,0 +1,339 @@
+GATE — Queue + Cloudflare Workflow drain orchestrator (phase 1)
+Talents (skills-marketplace/talents) — 2026-11-12 ~03:12 UTC
+Status: DEPLOYED + LIVE-VERIFIED (routes, binding, no live instance).
+NO live Workflow instance started. QUEUE_DRAIN_ENABLED untouched
+(still off). Sandbox drain + watchdog cron untouched. No candidates
+enqueued by this build. Cutover is a separate operator-run step
+(see "Cutover start procedure" below).
+
+Deploy
+- Worker version #68, id 9e8eac29-e542-45b1-b54a-7427b69be560,
+  created 2026-11-12T03:10:55Z (version_upload, wrangler 4.160.0).
+  Before: #63 69c9bce5 (stats-fix deploy, 2026-11-12T02:10:41Z).
+- Workflow `talent-drain` registered on the account:
+  id 2499332e-3eee-46db-97d5-611584b5cd34, script `talents`,
+  created 2026-11-12T03:11:01Z. (Only other Workflow on the
+  account: `nexus-side` on nexus-cloudflare-next, untouched.)
+- Deploy script: cf/scripts/deploy_queueworkflow.py (build +
+  wrangler deploy -c wrangler.deploy.jsonc; NO migration — all
+  Workflow state lives in the existing sync_state table).
+- One deploy failure on the way, fixed in the same session:
+  wrangler 10021 "The requested module 'cloudflare:workers' does
+  not provide an export named 'NonRetryableError'". Root cause:
+  NonRetryableError lives in "cloudflare:workflows", NOT
+  "cloudflare:workers" (WorkflowEntrypoint / WorkflowStep /
+  WorkflowEvent ARE in cloudflare:workers). The adapter now
+  imports NonRetryableError from "cloudflare:workflows" and the
+  rest from "cloudflare:workers" (docs: workflows/build/
+  sleeping-and-retrying). Lesson recorded in the adapter comment.
+
+Combined design (phase 1 — what shipped)
+- The queue STAYS the per-candidate work distributor. The
+  candidate-mode consumer (verify → ingest, retries ×3 → DLQ,
+  proven 500/500 in the slice) is UNTOUCHED — no change to its
+  verify/ingest body, no change to search/trending/suggest, no
+  change to refreshRecordStats (the concurrent stats-fix
+  builder's area; their fix shipped in #63 and its tests are
+  green in this suite).
+- NEW: TalentDrainWorkflow (cf/src/drain-workflow.ts — thin
+  WorkflowEntrypoint adapter; cf/src/drain-workflow-steps.ts —
+  all step logic, no "cloudflare:workers" import so Node tests
+  import it directly). It replaces the producer cron + flag +
+  watchdog as the BACKLOG feeder:
+  * pages candidates from D1 in verification-priority order
+    (keyset cursor, encoded string — the same cursor the admin
+    enqueue route uses), bounded pages (default 100, clamp 1–500);
+  * enqueues batches onto talents-ingest via the existing
+    enqueueCandidatePage (via "backfill-workflow");
+  * sleeps between batches (default 10 min, clamp 1–60) — pacing
+    + GitHub budget awareness reusing the hardening build's math
+    exactly: stop above 500 inflight, halt while the rate budget
+    is exhausted (sleep until the exhausted-until timestamp,
+    capped 1h per sleep), page capped by (remaining − 500 reserve)
+    / 8 worst-case calls, 30-min processing-lease cutoff so rows
+    another transport is processing are skipped;
+  * tracks batch completion via drain-health state (candidates,
+    inflight, DLQ depth) and the live marker's progress fields;
+  * handles DLQ arrivals: every drain-phase check sweeps
+    recoverable DLQ entries first (the dlq-sweep path, limit 25),
+    so a swept entry re-enters the queue and `done` stays false
+    until it completes;
+  * resumes from its durable checkpoint after any interruption:
+    every branch reads a STEP RESULT (never a fresh D1 read
+    outside a step), every step name comes from the loop counter
+    only (never Date.now()), step results are small JSON summaries
+    (≤1 MiB by construction);
+  * single-instance guard: the admin start route refuses while a
+    live instance exists (binding status is the truth; a stale
+    marker is overwritten), and the instance's init step aborts
+    itself with NonRetryableError if another live instance owns
+    the marker.
+- State (all D1 sync_state, no KV, no migration):
+  drain:workflow:live   — JSON {id, startedAt, batchSize,
+    sleepMinutes, maxBatches, cursor, enqueued, batches}:
+    single-instance claim + progress checkpoint. Written by the
+    start route (after create()), re-verified by the init step,
+    cleared by the finish step (only when it still names this
+    instance).
+  drain:workflow:active — ISO start timestamp. The cron producer
+    tick + daily trickle stand down while it is fresh (< 24h),
+    so the Workflow is the ONLY feeder (single-producer
+    invariant); stale after 24h so a crashed instance never
+    blocks the tick forever.
+  drain:workflow:last_run — JSON summary written by the finish
+    step ({id, finishedAt, reason, batches, enqueued, checks}).
+- Run loop (runDrainLoop): enqueue phase (batch → pace, until
+  done / flag-off / no-queue / batch cap 300) then drain phase
+  (check → wait, up to 144 checks ≈ 24h) until candidates==0
+  AND inflight==0. Terminal reasons: done | flag-off |
+  max-batches | check-limit | no-queue. Estimated steps for the
+  current ~20k backlog: ~203 batches + ~4 drain checks ≈ 207
+  counted steps (sleeps do NOT count) vs the 10,000 paid
+  default — an instance covers the whole backlog with headroom.
+- Admin routes (ADMIN_TOKEN-gated, 404 when the secret is
+  unset, same pattern as the other admin routes):
+  POST /admin/drain-workflow/start — flag-gated by
+    QUEUE_DRAIN_ENABLED (409 when off), refuses while one is
+    live (409, names the live id), 503 when the binding is
+    missing. Body: optional {batchSize, sleepMinutes,
+    maxBatches} (clamped). Creates ONE instance and writes the
+    live marker + active flag.
+  GET /admin/drain-workflow/status — {live, bindingMissing,
+    lastRun, health} (health = drainHealth snapshot).
+- Producer deconfliction (cf/src/discovery.ts, minimal edit):
+  runDrainProducerTick returns {skipped: "workflow-active"}
+  and runQueueDrainProducerStep returns null while
+  drainWorkflowActive() is true (fresh active marker, 24h
+  staleness). The tick does NOT take its producer lease in that
+  case. The key string is duplicated (not imported) because
+  drain-workflow-steps.ts imports discovery.ts — noted in a
+  comment at the helper.
+- Wrangler: "workflows": [{ "name": "talent-drain",
+  "binding": "DRAIN_WORKFLOW", "class_name":
+  "TalentDrainWorkflow" }] added to cf/wrangler.deploy.jsonc
+  ONLY (discovery bindings live only in the deploy config, per
+  wrangler.jsonc's rule). Env type: DRAIN_WORKFLOW?:
+  WorkflowBindingLike (minimal structural create/get/status)
+  in cf/src/db.ts, same convention as QueueLike.
+- ARCHITECTURE-v2.md §7: queue-drain paragraph extended with
+  the Workflow orchestrator (this gate's companion paragraph).
+
+Tests
+- Full suite: 325 tests, 324 pass, 0 fail, 1 skipped (the
+  pre-existing env-gated skip). Was 294 + stats-fix 5 = 299
+  before this build.
+- New: test/drainworkflow.test.ts — 26 tests, all passing.
+  Fake-step harness (executes immediately, records step names)
+  over the REAL D1DiscoveryStore on SQLite built from the
+  production migrations (0001–0004 + 0007), fake queue
+  collector, fake Workflow binding. Covers:
+  * params: defaults + clamps (batch 1–500, sleep 1–60 min,
+    batches 1–2000);
+  * batch pacing: flag-off (0 enqueued), no-queue binding,
+    rate-exhausted halt (until echoed), page cap by
+    (remaining − reserve)/8 (600 remaining → 12), queue-depth
+    stop at 500 inflight, priority-order paging without
+    duplicates + done on the empty confirmation page, leased-row
+    skip;
+  * sleep math: rate hold until its target (capped 1h), batch
+    interval otherwise;
+  * completion tracking: done only when candidates==0 AND
+    inflight==0 (each condition tested separately);
+  * DLQ sweep trigger: recoverable entry re-enqueued via
+    dlq-sweep, swept=1, dlqDepth 0 after, manifest row deleted;
+  * run loop: empty backlog (done, 1 batch + 1 check),
+    flag-off (stops after batch-0), no-queue (stops after
+    batch-0), batch cap (deterministic step names batch-0,
+    pace-0, batch-1, pace-1), drain-check cap (check-limit
+    after 2 checks, no sleep after the final check);
+  * single-instance guard: start refuses flag-off (409 class),
+    missing binding (503 class), live instance (names the id);
+    start succeeds over a stale (complete) marker and writes
+    the claim; status reports live/null + bindingMissing;
+    init aborts a duplicate instance (DrainWorkflowAbortError),
+    finish clears the claim + active flag and writes last_run;
+  * producer deconfliction: tick returns workflow-active and
+    enqueues nothing while the marker is fresh; resumes once
+    the marker is 25h stale; daily trickle returns null while
+    live.
+- The Workflows RUNTIME is not exercised in tests (no
+  WorkflowEntrypoint execution in Node): the loop takes a
+  minimal {do, sleep} step interface and the adapter is a thin
+  shell over the tested functions. The adapter's create() path
+  is verified only at cutover start (see open item).
+
+Live evidence (2026-11-12 ~03:12 UTC, after deploy #68)
+- GET https://talents.sh/ → 200. GET /api/search?q=security → 200.
+- GET /admin/drain-workflow/status, no token → 401
+  {"error":"unauthorized"}.
+- GET /admin/drain-workflow/start, no token → 405
+  {"error":"POST only"} (method check precedes auth).
+- POST /admin/drain-workflow/start, no token → 401.
+- GET /admin/drain-health, no token → 401 (existing route
+  still gated).
+- GET /admin/drain-workflow/status, authorized →
+  200 {"live":null,"bindingMissing":false,"lastRun":null,
+  "health":{...}} — no live instance, binding present.
+- POST /admin/drain-workflow/start, authorized, flag off →
+  409 {"error":"drain workflow disabled: QUEUE_DRAIN_ENABLED
+  is not on"} — refuses, creates nothing.
+- GET /admin/drain-health, authorized → 200, same snapshot
+  as the status health (below).
+- Drain health at gate time: candidates 20,131;
+  byStatus candidate 20,131 / ingested 1,235 / mined 5 /
+  rejected 76 / stale 613 / verified 20 / watchlist 36;
+  enqueued 10, terminal 10, dlqArrivals 0, inflight 0,
+  dlqDepth 0; lastTerminalAt 2026-11-12T02:05:33Z;
+  producerEnabled false; stalled false; reasons [].
+  (The 10/10 is the hardening slice's verified ingest.)
+- Cloudflare API: GET /accounts/.../workflows lists
+  talent-drain (id 2499332e-3eee-46db-97d5-611584b5cd34);
+  GET .../workflows/talent-drain/instances returns 0 instances.
+- ADMIN_TOKEN note: the token was re-minted for this gate via
+  cf/scripts/set_discovery_secrets.py (the established script;
+  it also re-set TALENTS_REGISTRY_KEY to the same value) and
+  the /tmp/talents-admin-token file was deleted after gating,
+  per convention. Anyone needing /admin/* access must re-mint
+  with that script — the previous token no longer works.
+
+Cutover start procedure (replaces the old flag-only cutover)
+Preconditions (unchanged): stats fix deployed (#63 — done)
+and a fresh verified ingest completes without DLQing
+(cutover criteria from gate-queuedrain: sane rejection
+reasons, ~0 DLQ arrivals, ≥~300/hr sustained).
+1. Re-mint the admin token (cf/scripts/set_discovery_secrets.py).
+2. POST /admin/drain-workflow/start (optionally with
+   {batchSize, sleepMinutes, maxBatches}; defaults 100 / 10 /
+   300). Expect 200 {id, status:"created", startedAt}. A 409
+   means the flag is off (set QUEUE_DRAIN_ENABLED=1 first) or
+   an instance is already live.
+3. Watch: GET /admin/drain-workflow/status (live id + health)
+   and GET /admin/drain-health (candidates falling, inflight
+   ≤500, dlqDepth 0). First batch should enqueue ≤100 within
+   ~10 min; the live marker's enqueued/batches advance in D1.
+4. Once the Workflow is feeding (first batches confirmed in
+   drain-health), stop the sandbox drain
+   (scripts/backfill-drain.mjs) and remove the
+   talents-backfill-drain-watchdog cron. Do NOT stop the
+   sandbox drain before the Workflow's first batches land —
+   the Workflow replaces the producer cron + flag + watchdog,
+   and the cron tick now stands down while it is live.
+5. If the Workflow errors or stalls: the flag is the kill
+   switch — set QUEUE_DRAIN_ENABLED off and the loop finishes
+   with reason "flag-off" at the next batch boundary (the
+   finish step clears the marker; status shows lastRun). A
+   duplicate start is refused while one is live; a crashed
+   instance's marker goes stale (binding status complete /
+   errored / terminated) and a fresh start overwrites it. The
+   producer tick resumes automatically 24h after the active
+   marker's timestamp if no instance is live.
+6. Rollback: stop the Workflow instance (API terminate) or
+   turn the flag off, then re-enable the producer tick path
+   (it resumes once the active marker is stale/absent) or
+   restart the sandbox drain. Nothing in this build deletes
+   or reclassifies data — candidates stay candidates until
+   the consumer ingests them.
+
+Phase 2 — DESIGN ONLY (not built): per-candidate Workflow
+Goal: fold today's separate enrich/embed sweeps into ingest,
+so one durable per-candidate run does verify → ingest →
+attest → enrich → embed, with per-step retries, instead of
+five separate passes (queue consumer + enrich cron + embed
+sweep + stats rebuild + DLQ sweep) that each re-read the
+record.
+- Trigger: the queue consumer (candidate-mode) starts ONE
+  Workflow instance per verified candidate (or per ingest
+  batch of N candidates — decision at build time; per-candidate
+  keeps failure blast radius at one record, per-batch saves
+  instance overhead; recommend per-candidate, measured against
+  the 10,000-step paid default and the instance-creation rate
+  limit).
+- Steps (all durable, each with its own retry policy):
+  1. verify — the existing verify path (fetch repo, parse
+     SKILL.md/plugin.json, classify). Retry: transient GitHub
+     errors only; deterministic failures → NonRetryableError
+     + D1 rejection (same as today).
+  2. ingest — the existing ingest/upsert + FTS indexing.
+     Attest inside this step (registry key sign) so the record
+     is never visible unattested.
+  3. enrich — Layers A–D for THIS record only (assets,
+     description repair, capabilities, editorial), reusing the
+     existing layer functions; skip layers the record already
+     has (idempotent, cheap re-run).
+  4. embed — single-record embed into Vectorize (the embed
+     sweep's per-record function, not the batched sweep).
+  5. stats — incremental stats update for this record only
+     (the stats-fix builder's incremental path, NOT the
+     full-table refreshRecordStats).
+- State: per-instance progress lives in the Workflow (step
+  results); D1 stays the source of truth for record state
+  (status, record_json, embedding_meta). No new tables
+  expected; the instance id is recorded on the source row
+  (new nullable column `workflow_instance_id`, migration) so
+  an operator can find a record's run.
+- DLQ: a step that exhausts retries errors the instance; the
+  queue message's final attempt writes the DLQ manifest as
+  today, and the DLQ sweep re-enqueues the message — which
+  starts a FRESH instance (step results are not shared across
+  instances; idempotent steps make the re-run safe).
+- Migration plan (from phase 1 to phase 2):
+  a. Build the per-candidate Workflow + its start call in the
+     consumer behind a flag (e.g. WORKFLOW_INGEST_ENABLED),
+     default off; keep the direct verify→ingest path as the
+     fallback.
+  b. Shadow-test on the sandbox drain's slice: run N
+     candidates through the Workflow path, compare terminal
+     states + record contents against the direct path
+     record-by-record (zero diffs required).
+  c. Flip the flag for new queue messages only; in-flight
+     direct-path messages finish as-is (no migration of live
+     messages).
+  d. Retire the enrich/embed sweeps' cron triggers once the
+     Workflow path has covered a full drain cycle with no
+     DLQ growth; keep the sweeps as backfill tools for
+     pre-Workflow records (they stay runnable, just
+     untriggered).
+  e. The phase-1 drain orchestrator (this build) is unchanged
+     by phase 2 — it still pages candidates onto the queue;
+     only the consumer's per-message handling changes.
+  f. Cost watch: instance count = candidate count (~20k for
+     the backlog, then steady-state discovery volume); confirm
+     the Workflows plan's instance/steps pricing before
+     flipping the flag for the backlog, and keep the batch
+     option (d) as the fallback if per-candidate pricing is
+     prohibitive.
+- Open design questions for the phase-2 build (not decisions):
+  per-candidate vs per-batch instances; whether enrich Layer D
+  (Anthropic, ~$9.78/1k generated) runs inline per record or
+  stays a batched sweep for cost; step retry counts per layer.
+
+What was NOT done (explicit)
+- No live Workflow instance started (0 instances on the
+  account for talent-drain at gate time).
+- QUEUE_DRAIN_ENABLED not set (still off / absent).
+- Sandbox drain NOT stopped; watchdog cron NOT removed.
+- No candidates enqueued by this build (all enqueues in the
+  tests were to a fake queue).
+- The adapter's create() call path is verified only by the
+  deploy (wrangler registered the binding + class) and will
+  first execute at cutover start. The start route's refusal
+  paths (409 flag-off, 401, 405) are live-verified; the
+  success path is test-verified with a fake binding.
+- refreshRecordStats, the consumer verify/ingest body, and
+  search/trending/suggest were not touched (collision rules).
+
+Files
+- cf/src/drain-workflow.ts (adapter + ambient module
+  declarations for cloudflare:workers / cloudflare:workflows)
+- cf/src/drain-workflow-steps.ts (step logic, loop, guard)
+- cf/src/db.ts (DRAIN_WORKFLOW?: WorkflowBindingLike +
+  WorkflowInstanceLike / WorkflowBindingLike)
+- cf/src/index.ts (export TalentDrainWorkflow; POST
+  /admin/drain-workflow/start + GET /admin/drain-workflow/status)
+- cf/src/discovery.ts (drainWorkflowActive() guard in
+  runDrainProducerTick + runQueueDrainProducerStep only)
+- cf/wrangler.deploy.jsonc (workflows binding, deploy config only)
+- test/drainworkflow.test.ts (26 tests)
+- cf/scripts/deploy_queueworkflow.py (deploy script)
+- data/gate-queue-workflow.txt + data/gate-queue-workflow.json (this gate)
+- ~/workspace/skills-marketplace/ARCHITECTURE-v2.md §7 (paragraph)

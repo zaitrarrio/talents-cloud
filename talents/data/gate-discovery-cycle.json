@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-10T21:12:21.078Z",
+  "target": "remote",
+  "sweep": {
+    "queriesRun": 9,
+    "found": 20,
+    "uniqueCandidates": 16,
+    "rateLimitHits": 0,
+    "searchCalls": 9
+  },
+  "candidatesSeen": 16,
+  "alreadyKnown": 9,
+  "verified": 2,
+  "rejected": [
+    {
+      "locator": "crsmithdev/aleph",
+      "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+    },
+    {
+      "locator": "tonone-ai/tonone",
+      "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+    },
+    {
+      "locator": "waldoocreator/claude-code-oficina",
+      "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+    },
+    {
+      "locator": "j-nowcow/awesome-korean-agent-skills",
+      "reason": "no marketplace.json, SKILL.md, or plugin.json in tree"
+    },
+    {
+      "locator": "eclipter/agents",
+      "reason": "git tree fetch failed (repo gone, private, or rate-limited)"
+    }
+  ],
+  "ingestedSources": [
+    {
+      "locator": "m4bwav/threewright",
+      "kind": "marketplace",
+      "newRecords": 1,
+      "existingSkipped": 0,
+      "deadLetter": 0
+    },
+    {
+      "locator": "itsomidkarami/kraft",
+      "kind": "marketplace",
+      "newRecords": 2,
+      "existingSkipped": 0,
+      "deadLetter": 0
+    }
+  ],
+  "newRecords": 3,
+  "sourcesByStatus": {
+    "ingested": 8,
+    "rejected": 16,
+    "verified": 13
+  },
+  "firstCycleSummary": {
+    "note": "First production cycle of the day (same command, transcribed from CLI stdout in the build log); this file's top-level stats are the second cycle, which re-swept overlapping candidates and still added 3 records from 2 newly-verified sources.",
+    "sweep": {
+      "queriesRun": 9,
+      "found": 17,
+      "uniqueCandidates": 16,
+      "rateLimitHits": 0
+    },
+    "candidatesSeen": 16,
+    "alreadyKnown": 2,
+    "verified": 6,
+    "rejectedCount": 8,
+    "newRecords": 78,
+    "ingestedSources": [
+      {
+        "locator": "asarelcastellanos/claude-skills",
+        "kind": "marketplace",
+        "newRecords": 3,
+        "deadLetter": 0
+      },
+      {
+        "locator": "evch1204/claude-pr-review-skill",
+        "kind": "skill-repo",
+        "newRecords": 1,
+        "deadLetter": 3
+      },
+      {
+        "locator": "paperclipai/paperclip",
+        "kind": "skill-repo",
+        "newRecords": 74,
+        "deadLetter": 9
+      }
+    ],
+    "sourcesByStatusAfter": {
+      "ingested": 6,
+      "rejected": 11,
+      "verified": 13
+    }
+  }
+}

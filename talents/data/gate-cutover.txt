@@ -1,0 +1,150 @@
+GATE — Talents cutover: Workflow drain started, sandbox drain + watchdog retired
+Talents (skills-marketplace/talents) — 2026-11-12 ~03:33–03:46 UTC
+(2026-11-11 21:33–21:46 CST)
+Status: CUTOVER COMPLETE. The Workflow drain is the only feeder.
+User authorized the cutover in chat (tapped "Start the Workflow drain
+(cutover)").
+
+INSTANCE
+- Workflow `talent-drain`, instance id drain-1794454407743-b66626
+- POST /admin/drain-workflow/start 2026-11-12T03:33:25Z → 200
+  {"id":"drain-1794454407743-b66626","status":"created",
+   "startedAt":"2026-11-12T03:33:27.743Z"} — the first real create()
+  (flagged in gate-queue-workflow as verified-only-at-cutover).
+  Cloudflare API confirmed the instance running at 03:33:31Z.
+- Defaults used: batchSize 100, sleepMinutes 10, maxBatches 300.
+- Single instance only: exactly 1 instance on the account for
+  talent-drain at every check; no second start was ever attempted.
+
+FLAG
+- QUEUE_DRAIN_ENABLED=1 added to [vars] in cf/wrangler.deploy.jsonc
+  (the documented Worker-var mechanism, gate-harden-drain) with a
+  comment noting the flag is also the Workflow kill switch.
+- Deployed via cf/scripts/deploy_queueworkflow.py → Worker version
+  24e92b3c-5f60-44e0-b8ec-db2471b72ec6. Home 200, search 200 after.
+  Drain-health then showed producerEnabled:true (was false).
+
+BEFORE (2026-11-12 ~03:33 UTC, pre-start)
+- candidates 20,131 (ingested 1,235 / stale 613 / rejected 76 /
+  verified 20 / watchlist 36 / mined 5); listed records 22,444
+- drain counters: enqueued 10, terminal 10, dlqArrivals 0,
+  inflight 0, dlqDepth 0; lastTerminalAt 2026-11-12T02:05:33Z
+  (88 min idle — producer-starved, stalled:true)
+- Sandbox drain DEAD (no backfill-drain.mjs process; progress file
+  frozen at batch 27 / 10,825 new records — it had died after the
+  21:05 CST watchdog relaunch).
+
+FIRST BATCHES (the watch criterion)
+- 03:33:42Z: candidates 20,130, enqueued 10, terminal 10 (no
+  movement yet, 15 s after start).
+- 03:34:48Z: candidates 20,099, enqueued 110 (+100 = full batch 1),
+  terminal 34 (+24), inflight 76, dlqArrivals 0, stalled:false.
+- 03:35:30Z: enqueued 110, terminal 41, inflight 69.
+- 03:45:03Z: enqueued 210 (+100 = batch 2, after the 10-min sleep),
+  terminal 121, inflight 89, candidates 20,011, dlqArrivals 0.
+  The loop repeats, not just batch 1.
+
+GUARD DEFECT FOUND + FIXED DURING THE WATCH (not in the plan)
+- Symptom (~03:35Z): GET /admin/drain-workflow/status reported
+  live:null while the instance was verifiably running (Cloudflare
+  API: status "running"), even though the D1 live marker existed
+  (drain:workflow:live = the instance id, batchSize 100, cursor
+  present) and the active marker was set.
+- Root cause: cf/src/drain-workflow-steps.ts getLiveDrainWorkflow
+  called `env.DRAIN_WORKFLOW.get(marker.id)` WITHOUT await. The
+  real binding's get() is async (docs: get(id):
+  Promise<WorkflowInstance>), so `inst` was a Promise,
+  `inst.status()` threw TypeError, the catch returned stale.
+  Consequence: live detection always reported stale — status
+  showed live:null AND the single-instance guard in
+  startDrainWorkflow (same function) was blind: a second POST
+  start would have created a duplicate instance, and the duplicate's
+  init step (same function) would not have aborted it. The
+  "single-instance guarded" claim in gate-queue-workflow was not
+  true live. The cron-tick stand-down was NOT affected (it reads
+  the drain:workflow:active marker timestamp, not the binding).
+- Why tests missed it: test/drainworkflow.test.ts fakeBinding had
+  a SYNCHRONOUS get() returning the instance directly; the real
+  binding returns a Promise. The fake was unfaithful.
+- Fix (2026-11-12 ~03:36–03:39Z): one await —
+  `const inst = await env.DRAIN_WORKFLOW.get(marker.id)` — plus
+  WorkflowBindingLike.get() typed as Promise<WorkflowInstanceLike>
+  in cf/src/db.ts, the test fake made async, and comments at all
+  three sites. The two existing guard tests (start refuses while
+  live; status reports live when running) now exercise the async
+  fake and would fail on the old code — they are the regression
+  coverage. Full suite: 325 tests, 324 pass, 0 fail, 1 skipped
+  (pre-existing env-gated skip).
+- Redeploy via cf/scripts/deploy_queueworkflow.py → Worker version
+  ed3c68b5-0c89-4f0c-9249-69161ae7f952 (03:39:28Z). The running
+  instance was NOT disturbed: terminals kept flowing through the
+  deploy (lastTerminalAt 03:39:30Z) and the instance stayed live.
+- Post-fix verification: status shows
+  live:{id:"drain-1794454407743-b66626",status:"waiting",
+  startedAt:"2026-11-12T03:33:32.459Z"} ("waiting" = in the 10-min
+  inter-batch sleep — correct). Home 200, search 200.
+
+FINAL STATE (2026-11-12 03:45:27Z)
+- candidates 20,007 (down 124 since start); listed records 23,739
+  (up 1,295 — a terminal candidate can yield many records; big
+  collections explain the multiple)
+- enqueued 210, terminal 125, inflight 85, dlqArrivals 0,
+  dlqDepth 0, lastTerminalAt 03:45:25.523Z, stalled:false, reasons:[]
+- Instance live: running (status route), confirmed via API.
+- Next batch (~03:55Z) expected to enqueue a further 100; the
+  instance's ~207-step budget covers the whole ~20k backlog.
+
+SANDBOX DRAIN + WATCHDOG RETIREMENT (step 6, only after batches landed)
+- Sandbox drain: verified dead at 03:44:44Z and again at 03:45:21Z
+  (ps: no backfill-drain.mjs process) — nothing to kill; it had
+  already died on its own. It will not be relaunched.
+- Watchdog cron talents-backfill-drain-watchdog: removed
+  2026-11-12 03:45:21Z via cron.remove (scheduler reconciled,
+  definition archived). Confirmed absent from cron.list afterwards.
+  The 22:05 CST run will not fire.
+
+INCIDENTS DURING THIS CUTOVER
+- Sandbox runtime restart mid-watch (~03:40–03:44Z) wiped /tmp:
+  the sleep-300 watch command died without a result and
+  /tmp/talents-admin-token + /tmp/talents_curl.conf vanished.
+  Nothing written was affected (the sleep preceded a read-only
+  health check). Recovered by re-minting the admin token via
+  cf/scripts/set_discovery_secrets.py (second mint of the night;
+  the first mint's token is superseded) and re-verifying state
+  fresh from D1 + the Cloudflare API before proceeding. No action
+  was repeated blindly.
+- The admin routes take the x-talents-admin header, NOT
+  Authorization: Bearer — first authorized calls 401'd on the
+  wrong header (operator error, caught by reading
+  adminAuthorized in cf/src/discovery.ts). Also: Python urllib's
+  default User-Agent gets Cloudflare error 1010 on talents.sh;
+  curl works.
+
+SECRETS / CLEANUP
+- ADMIN_TOKEN re-minted twice tonight (cutover mint ~03:30Z, then
+  again after the /tmp wipe ~03:45Z). /tmp/talents-admin-token,
+  /tmp/talents_curl.conf, /tmp/talents_admin.py,
+  /tmp/talents_watch.py all deleted after gating. Token values
+  never printed, filed, or logged. Anyone needing /admin/* access
+  must re-mint via cf/scripts/set_discovery_secrets.py.
+
+OPERATOR NOTES (going forward)
+- The flag QUEUE_DRAIN_ENABLED=1 is now the Workflow's kill
+  switch: turning it off ends the loop at the next batch boundary
+  with reason "flag-off". The */10 producer tick stands down
+  while the Workflow instance is live (active marker <24h old)
+  and resumes automatically 24h after the marker goes stale.
+- Watch: drain-health candidates falling ~100/batch, inflight
+  ≤500, dlqArrivals 0. If the instance errors/stalls, status
+  shows lastRun with the terminal reason.
+- Remaining from the plan: P0-2 (aggregate→R2), P0-3 (nightly D1
+  export), P0-5 (monitoring), P1-1 (per-message subrequest
+  budget) — none block the drain. Phase 2 (per-candidate
+  Workflow) is designed, not built.
+
+FILES CHANGED IN THIS CUTOVER
+- cf/wrangler.deploy.jsonc ([vars] QUEUE_DRAIN_ENABLED=1)
+- cf/src/drain-workflow-steps.ts (await get() + comment)
+- cf/src/db.ts (WorkflowBindingLike.get async type + comment)
+- test/drainworkflow.test.ts (async fake get() + comment)
+- data/gate-cutover.txt + data/gate-cutover.json (this gate)

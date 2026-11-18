@@ -1,0 +1,119 @@
+Gate: component-shape fix — live page-500 defect class (2026-11-11 07:52 America/Chicago)
+KNOWN CASE: aaron-he-zhu/aaron-marketing skill page returned 500 ("c2.commands.map is not
+a function") because its stored record_json had components.commands as TEXT.
+Root cause: ingest passed publisher manifest values through unchecked — plugin.json/
+marketplace.json allow components as bare strings (e.g. commands: "./commands/"). The
+value flowed into the record raw (commands: entry.commands ?? []), and the declaration
+and search flatteners SPREAD bare strings into per-character arrays
+("Provides 10 slash command(s):./commands/,., /, c, o, m, a, n, d, s").
+
+PRODUCTION SWEEP (D1, read-only, 16,096 listed records at sweep time)
+  json_type(components.<field>) != 'array'  [components itself object-missing: 0]
+    skills     0
+    commands   1   aaron-he-zhu/aaron-marketing = TEXT "./commands/"
+    agents     0
+    mcpServers 0
+    hooks      0
+  All other renderer-consumed record arrays also 0 non-array:
+    declaration.lines / declaration.declaration / declaration.derivedFrom 0 each,
+    validation.issues 0, filesHashed 0, components object itself 0.
+  Second detector (array of >=5 entries, all length <=1 = char-spread from ingest):
+    found 1 more in-class record the type sweep could not see (valid array, wrong content):
+    jeffallan/fullstack-dev-skills — components.skills =
+      [".","/","s","k","i","l","l","s","/"] (the string "./skills/" spread by ingest);
+      declaration polluted: "Provides 7 skill(s): skills/,., /, s, k, i, l".
+      Its page did not 500 but rendered garbage component text.
+  TRUE CLASS SIZE: 2 records (1 stored-as-text, 1 char-spread from ingest).
+  Re-scan after the repair (both detectors): 0 still affected / 16,096 listed.
+  Search FTS rows for both records: fixed declarations present, polluted char
+  sequences absent.
+
+FILES CHANGED (root suite: 232 tests, 231 pass, 0 fail, 1 pre-existing env-gated skip — was 222)
+  src/validate.ts    — NEW shared stringArray(v) (bare string -> [v]; array -> string
+                       elements; anything else -> []) + normalizeComponents(c): skills,
+                       commands, agents, mcpServers always string arrays, hooks coerced
+                       to boolean, unknown component keys preserved.
+                       MarketplaceEntry.skills/commands/agents widened to string | string[].
+  src/declaration.ts — asArray now delegates to stringArray; entryComponents spreads
+                       normalized arrays (was spreading bare strings into characters).
+  src/ingest.ts      — record construction passes components through normalizeComponents;
+                       skillPaths loop uses stringArray(entry.skills).
+  src/search.ts      — flattenComponents normalizes before spreading (feeds D1 store writes;
+                       a bare string used to spread into per-character FTS tokens);
+                       toSearchDocument guards declaration arrays; warningCount guards
+                       non-array validation.issues.
+  src/render.ts      — local arr<T>(v) defensive guard + normalizeComponents applied in
+                       trendingScore, componentsList, skillCard, firstDeclarationLine,
+                       renderSkillPage (declaration lines/undeclared/issues/derivedFrom/
+                       filesHashed), enrichmentPanels (Layer B/C/D/E arrays + validation
+                       flags). cf/src/render-creator.ts audited: reads only scalar record
+                       fields — no collection iteration, no change needed.
+  test/shapefix.test.ts — NEW, 10 tests: normalizer cases (bare string, mixed array,
+                       non-string scalars, object/garbage, hooks coercion, null),
+                       the exact "c2.commands.map" regression (commands "./commands/"
+                       renders "Commands — ./commands/", never throws), all-fields-malformed
+                       fixture, missing components, declaration char-spread removal,
+                       flattenComponents no-char-spread, and end-to-end ingestGithubRepo
+                       with bare-string marketplace collections storing real arrays.
+  scripts/repair-components.mjs — NEW: enumerates both defect shapes via SQL, rebuilds
+                       each record through its original builder (ingestGithubRepo for
+                       marketplace records, scanGithubRepoSkills for direct-repo-scan),
+                       upserts via the store's normal write path with the builder's fresh
+                       attestation (the description-fix refresh/re-attest flow);
+                       in-place normalization only as fallback. No hand edits in D1.
+  cf/scripts/deploy_shapefix.py — NEW: established deploy driver (reads dist).
+  README.md          — "Component-shape fix" section appended (pattern: sweep, fix layers,
+                       repair, verification).
+
+DATA REPAIR (via backfill_remote.py + D1DiscoveryStore.upsertRecord; evidence:
+  data/repair-components-result.json, data/repair-components-progress.json)
+  repaired=2, unrepaired=0, unchanged=0.
+  aaron-he-zhu/aaron-marketing (rebuilt via ingest):
+    components.commands  "./commands/" (TEXT) -> ["./commands/"]
+    declaration line:    "Provides 10 slash command(s):./commands/,., /, c, o, m, a, n, d, s"
+                      -> "Provides 1 slash command(s):./commands/"
+    stored FTS declaration = fixed line; page-crawled attestation re-signed by repair run.
+  jeffallan/fullstack-dev-skills (rebuilt via repo scan):
+    components.skills    [".","/","s","k","i","l","l","s","/"] -> ["./skills/"]
+    declaration line:    "Provides 7 skill(s): skills/,., /, s, k, i, l"
+                      -> "Provides 1 skill(s): skills/"
+    Note: its rebuilt record carries one honest warning (skill-unreachable for path
+    "skills") — an upstream repo-layout quirk, unrelated to this defect class.
+
+DEPLOY
+  cf/scripts/deploy_shapefix.py: OK — Worker version
+  22afb74d-94e9-47dd-99ed-2e705648e93b; both custom domains (talents.sh,
+  mcp.talents.sh) intact, both cron schedules intact (23 4 * * *, 41 5 * * 1),
+  no migrations. Backfill drain untouched throughout.
+  .dist-snapshot refreshed from the fixed build (cp -r dist) and verified containing
+  normalizeComponents — the drain's next watchdog relaunch ingests with the fix.
+
+PAGE VERIFICATION (live, talents.sh)
+  aaron-he-zhu/aaron-marketing:
+    BEFORE: HTTP 500 ("c2.commands.map is not a function").
+    AFTER (crawl 2026-11-11 13:36 UTC, post-deploy, pre-repair): HTTP 200 — header,
+    About, README, Contents (128 items), "+ Skills & components — Skills — 240",
+    "Commands — ./commands/" renders sensibly.
+    The page-fetch cache kept serving that 13:36 UTC copy on repeat opens (3 attempts),
+    so the post-repair declaration line could not be re-crawled; the post-repair state
+    is proven in production D1 (stored components + declaration verified) and FTS, and
+    the identical Worker build is proven live by the jeffallan crawl below.
+  jeffallan/fullstack-dev-skills:
+    AFTER (crawl 2026-11-11 13:39 UTC, post-deploy + post-repair): HTTP 200 —
+    "Components — Skills — ./skills/", declaration "Provides 1 skill(s): skills/",
+    "Attestation verified — ed25519, signed 2026-11-11T13:39:03.052Z" visible.
+
+SEARCH RE-EMBED (search text changed for both records; both re-embedded post-repair)
+  aaron-he-zhu/aaron-marketing   embedding_meta.embedded_at = 2026-11-11T13:39:38.402Z
+    (text_hash prefix d267812efad9 — differs from the polluted pre-fix embedding)
+  jeffallan/fullstack-dev-skills embedded_at = 2026-11-11T13:48:42.691Z
+  Both via the detached backfill-embed sweep (scripts/backfill-embed.mjs over the
+  deployed Worker /admin/embed-batch; logs: data/shapefix-embed.log). At gate time the
+  sweep is still running and is also refreshing embeddings for drain-churned records —
+  restart-safe, idempotent by design (embedded_at vs updated_at comparison).
+  Admin token file deleted after use.
+
+VERDICT: the page-500 class is closed — sweep-proven class of 2, both layers fixed
+(render tolerance + ingest normalizer + search-flatten), both records repaired through
+the store's attested write path and re-embedded, class-wide re-scan = 0, suite green,
+deployed Worker serving 200s, snapshot refreshed for the drain.

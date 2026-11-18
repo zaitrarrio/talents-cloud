@@ -1,0 +1,11 @@
+DELETE FROM claims;
+DELETE FROM listing_overrides;
+DELETE FROM unlisted_skills;
+DELETE FROM purchases;
+DELETE FROM entitlements;
+DELETE FROM install_tokens;
+DELETE FROM pending_token_pickups;
+DELETE FROM creator_accounts;
+DELETE FROM users;
+DELETE FROM namespaces WHERE owner = 'anthropics';
+DELETE FROM installs WHERE skill_id IN ('anthropics/pdf', 'anthropics/docx');
